@@ -1,0 +1,100 @@
+#' Minimum Hellinger Distance Estimator for the Lognormal Model
+#'
+#' @param x univariate observations from the finite population
+#' @param wgt sampling weights
+#' @param initial an initial estimate for the shape and scale parameters. If missing,
+#'   use the MLE.
+#' @param log_transform whether to log-transform the data before estimation or not.
+#' @param optim_method,optim_control method and control options passed on to [stats::optim()].
+#' @importFrom stats dnorm dlnorm weighted.mean uniroot optim
+#' @importFrom rlang warn
+#' @family Minimum Hellinger Distance Estimator
+#' @export
+mhd_lognorm <- function (x, wgts = NULL, initial, log_transform = FALSE,
+                         optim_method = "Nelder-Mead", optim_control = list()) {
+  if (isTRUE(log_transform) && any(x < .Machine$double.eps)) {
+    warn("Cannot fit the log-normal distribution on the log scale if 0's are present")
+    log_transform <- FALSE
+  }
+  logx <- log(x[x > 0])
+  if (is.null(wgts)) {
+    wgts <- rep.int(1 / length(x), length(x))
+  }
+  if (missing(initial)) {
+    initial <- c(weighted.mean(logx, w = wgts), sd(logx))
+  }
+
+  if (isTRUE(log_transform)) {
+    x <- log(x)
+    rg <- c(-Inf, Inf)
+    dfun_factory <- \(params) {
+      \(x) dnorm(x, mean = params[[1]], sd = params[[2]], log = TRUE)
+    }
+  } else {
+    rg <- c(0, Inf)
+    dfun_factory <- \(params) {
+      \(x) dlnorm(x, meanlog = params[[1]], sdlog = params[[2]], log = TRUE)
+    }
+  }
+
+  environment(dfun_factory) <- baseenv()
+
+  bandwidth <- 1.06 * mad(x) * length(x)^(-1/5)
+
+  mhde_integral <- hd_gauss_quadrature(x, wgts, bandwidth, range = rg)
+
+  initial[[2]] <- log(initial[[2]])
+  mhd_est <- optim(initial, \(params) {
+    params[[2]] <- exp(params[[2]])
+    mhde_integral(dfun_factory(params))
+  },
+  method = optim_method,
+  control = optim_control)
+
+  if (mhd_est$convergence != 0) {
+    warn(sprintf("Optimizer did not converge (code %d): %s",
+                        mhd_est$convergence, paste0('', mhd_est$message)))
+  }
+
+  estimates <- c("mean" = mhd_est$par[[1]],
+                 "sd"   = exp(mhd_est$par[[2]]))
+  covest <- matrix(c(estimates[['sd']]^2, 0, 0, 0.5 * estimates[['sd']]^2), ncol = 2)
+
+  structure(
+    list(estimates      = estimates,
+         bias           = numeric(2),
+         cov            = covest,
+         mhd            = mhd_est$value,
+         initial        = c(initial[[1]], exp(initial[[2]])),
+         dfun           = dlnorm,
+         model          = "gamma",
+         optimizer_code = mhd_est$convergence,
+         optimizer_msg  = mhd_est$message),
+    class = 'survey_mde')
+}
+
+#' Maximum Likelihood Estimator for the Lognormal Model
+#'
+#' @param x univariate observations from the finite population
+#' @param wgts sampling weights
+#' @return a list with `estimates`, the covariance `cov` and the density function.
+#' @importFrom stats dlnorm weighted.mean
+#' @keywords internal
+mle_lognormal <- function (x, wgts = NULL) {
+  avg <- if (is.null(wgts)) {
+    mean
+  } else {
+    \(x) weighted.mean(x, w = wgts)
+  }
+
+  logx <- log(x)
+  estimates <- c("mean" = avg(logx),
+                 "sd"   = NA_real_)
+  estimates[['sd']] <- sqrt(avg((logx - estimates[['mean']])^2))
+
+  covest <- matrix(c(estimates[['sd']]^2, 0, 0, 0.5 * estimates[['sd']]^2), ncol = 2)
+
+  list(estimates = estimates,
+       cov       = covest,
+       dfun      = dlnorm)
+}

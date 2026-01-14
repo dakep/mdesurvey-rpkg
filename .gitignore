@@ -1,0 +1,12 @@
+.Rprofile
+*.o
+*.so
+config.log
+config.status
+autoconfig.h
+*.Rproj
+.Rproj.user
+.Rhistory
+.vscode
+renv
+renv.lock
