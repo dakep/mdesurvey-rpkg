@@ -87,7 +87,17 @@ mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"
                        sqrt(dgamma(x, shape = estimates[['shape']], scale = estimates[['scale']])) /
                        sqrt(fhat))
 
-    covest <- solve(A_est, sigma_hat) %*% solve(A_est)
+    covest <- tryCatch({
+      solve(A_est, sigma_hat) %*% solve(A_est)
+    }, error = \(cnd) {
+      warning("Sandwich estimator is singular. Returning model-based covariance estimate.")
+      matrix(c(trigamma(estimates[[1]]),
+               1 / estimates[[2]],
+               1 / estimates[[2]],
+               estimates[[1]] / estimates[[2]]^2),
+             ncol = 2) |>
+        solve()
+    })
 
     estimated_bias <- c(
       3 / (length(x) * 2 * estimates[['shape']]^2 * psigamma(estimates[['shape']], deriv = 2)),
