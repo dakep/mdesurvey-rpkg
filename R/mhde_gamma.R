@@ -89,51 +89,60 @@ mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"
 
     covest <- solve(A_est, sigma_hat) %*% solve(A_est)
 
+    estimated_bias <- c(
+      3 / (length(x) * 2 * estimates[['shape']]^2 * psigamma(estimates[['shape']], deriv = 2)),
+      -estimates[['scale']] * (
+        3 * estimates[['shape']] * psigamma(estimates[['shape']], deriv = 2) +
+          psigamma(estimates[['shape']], deriv = 1) +
+          estimates[['shape']] * psigamma(estimates[['shape']], deriv = 1)^2) /
+        (length(x) * estimates[['shape']] *
+           (estimates[['shape']] * psigamma(estimates[['shape']], deriv = 2) - 1)))
+
     ## Bias correction ##
-    bias_vec <- mhde_integral(log = FALSE, \(xint) {
-      score <- cbind(log(xint) - log(estimates[['scale']]) - digamma(estimates[['shape']]),
-                     (xint/estimates[['scale']] - estimates[['shape']]) / estimates[['scale']])
-
-      # hessian elements [1, 1], [1,2], and [2, 2]
-      hess <- cbind(0.5 * score[, 1]^2 -
-                      trigamma(estimates[['shape']]),
-                    0.5 * score[, 1] * score[, 2] -
-                      1 / estimates[['scale']],
-                    0.5 * score[, 2]^2 +
-                      estimates[['shape']] / estimates[['scale']]^2 -
-                      2 * xint / estimates[['scale']]^3)
-
-      hess_col <- function (j, k) {
-        col <- c(1, 2, 2, 3)[[(j - 1) * 2 + k]]
-        hess[, col]
-      }
-
-      third_score <- array(dim = c(2, 2, 2, length(xint)), data = 0)
-      third_score[1, 1, 1, ] <- -psigamma(estimates[['shape']], deriv = 2)
-      third_score[2, 2, 2, ] <- 6 * xint / estimates[['scale']]^4 - 2 * estimates[['shape']] / estimates[['scale']]^3
-      third_score[1, 2, 2, ] <- 1 / estimates[['scale']]^2
-
-      third_deriv <- matrix(0, nrow = length(xint), ncol = 2^3)
-
-      for (j in 1:2) {
-        for (k in 1:2) {
-          for (l in 1:2) {
-            col <- (j - 1) * (2^2) + (k - 1) * 2 + l
-            third_deriv[, col] <- third_score[j, k, l, ] +
-              0.5 * (score[, j] * hess_col(k, l) + score[, k] * hess_col(j, l) + score[, l] * hess_col(j, k)) +
-              0.25 * score[, j] * score[, k] * score[, l]
-          }
-        }
-      }
-
-      f_theta <- dgamma(xint, shape = estimates[['shape']], scale = estimates[['scale']])
-      0.5 * sqrt(f_theta) * third_deriv
-    })
-
-    bias_mat <- array(0.5 * bias_vec - 1, dim = rep.int(2, 3))
-    ds <- apply(bias_mat, 3, \(b) sum(colSums(covest * b)))
-
-    estimated_bias <- -solve(A_est, ds) / length(x)
+    # bias_vec <- mhde_integral(log = FALSE, \(xint) {
+    #   score <- cbind(log(xint) - log(estimates[['scale']]) - digamma(estimates[['shape']]),
+    #                  (xint/estimates[['scale']] - estimates[['shape']]) / estimates[['scale']])
+    #
+    #   # hessian elements [1, 1], [1,2], and [2, 2]
+    #   hess <- cbind(0.5 * score[, 1]^2 -
+    #                   trigamma(estimates[['shape']]),
+    #                 0.5 * score[, 1] * score[, 2] -
+    #                   1 / estimates[['scale']],
+    #                 0.5 * score[, 2]^2 +
+    #                   estimates[['shape']] / estimates[['scale']]^2 -
+    #                   2 * xint / estimates[['scale']]^3)
+    #
+    #   hess_col <- function (j, k) {
+    #     col <- c(1, 2, 2, 3)[[(j - 1) * 2 + k]]
+    #     hess[, col]
+    #   }
+    #
+    #   third_score <- array(dim = c(2, 2, 2, length(xint)), data = 0)
+    #   third_score[1, 1, 1, ] <- -psigamma(estimates[['shape']], deriv = 2)
+    #   third_score[2, 2, 2, ] <- 6 * xint / estimates[['scale']]^4 - 2 * estimates[['shape']] / estimates[['scale']]^3
+    #   third_score[1, 2, 2, ] <- 1 / estimates[['scale']]^2
+    #
+    #   third_deriv <- matrix(0, nrow = length(xint), ncol = 2^3)
+    #
+    #   for (j in 1:2) {
+    #     for (k in 1:2) {
+    #       for (l in 1:2) {
+    #         col <- (j - 1) * (2^2) + (k - 1) * 2 + l
+    #         third_deriv[, col] <- third_score[j, k, l, ] +
+    #           0.5 * (score[, j] * hess_col(k, l) + score[, k] * hess_col(j, l) + score[, l] * hess_col(j, k)) +
+    #           0.25 * score[, j] * score[, k] * score[, l]
+    #       }
+    #     }
+    #   }
+    #
+    #   f_theta <- dgamma(xint, shape = estimates[['shape']], scale = estimates[['scale']])
+    #   0.5 * sqrt(f_theta) * third_deriv
+    # })
+    #
+    # bias_mat <- array(0.5 * bias_vec - 1, dim = rep.int(2, 3))
+    # ds <- apply(bias_mat, 3, \(b) sum(colSums(covest * b)))
+    #
+    # estimated_bias <- -solve(A_est, ds) / length(x)
   } else if (identical(cov_type, "model")) {
     covest <- matrix(c(trigamma(estimates[[1]]),
                        1 / estimates[[2]],
