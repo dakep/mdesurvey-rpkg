@@ -9,6 +9,7 @@ mhd_gamma(
   wgts = NULL,
   initial,
   cov_type = c("sandwich", "model", "none"),
+  integration_subdivisions = 256,
   optim_method = "Nelder-Mead",
   optim_control = list()
 )
@@ -16,20 +17,25 @@ mhd_gamma(
 \arguments{
 \item{x}{univariate observations from the finite population}
 
+\item{wgts}{sampling weights}
+
 \item{initial}{an initial estimate for the shape and scale parameters. If missing,
 use the MLE.}
 
 \item{cov_type}{whether to use the sandwich estimator for the covariance matrix
 the inverse Fisher information under the model, or not estimate the covariance matrix.}
 
-\item{optim_method, optim_control}{method and control options passed on to [stats::optim()].}
+\item{integration_subdivisions}{number of partitions to divide the domain of \eqn{\hat f()}
+for Gauss-Kronrod quadrature.}
 
-\item{wgt}{sampling weights}
+\item{optim_method, optim_control}{method and control options passed on to \code{\link[stats:optim]{stats::optim()}}.}
 }
 \description{
-Minimum Hellinger Distance Estimator for the Gamma Model
+Compute the MHDE for the shape \eqn{\alpha} and scale \eqn{\theta} of the Gamma model.
 }
 \seealso{
+\code{\link[stats:GammaDist]{stats::dgamma()}} for the parametrization by shape and scale.
+
 Other Minimum Hellinger Distance Estimator: 
 \code{\link{mhd_lognorm}()}
 }

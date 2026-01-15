@@ -9,6 +9,7 @@ mhd_lognorm(
   wgts = NULL,
   initial,
   log_transform = FALSE,
+  integration_subdivisions = 256,
   optim_method = "Nelder-Mead",
   optim_control = list()
 )
@@ -16,19 +17,25 @@ mhd_lognorm(
 \arguments{
 \item{x}{univariate observations from the finite population}
 
+\item{wgts}{sampling weights}
+
 \item{initial}{an initial estimate for the shape and scale parameters. If missing,
 use the MLE.}
 
 \item{log_transform}{whether to log-transform the data before estimation or not.}
 
-\item{optim_method, optim_control}{method and control options passed on to [stats::optim()].}
+\item{integration_subdivisions}{number of partitions to divide the domain of \eqn{\hat f()}
+for Gauss-Kronrod quadrature.}
 
-\item{wgt}{sampling weights}
+\item{optim_method, optim_control}{method and control options passed on to \code{\link[stats:optim]{stats::optim()}}.}
 }
 \description{
-Minimum Hellinger Distance Estimator for the Lognormal Model
+Compute the MHDE for the parameters \eqn{\mu,\sigma} of the Lognormal model.
 }
 \seealso{
+\code{\link[stats:Lognormal]{stats::dlnorm()}} for the parametrization by \code{meanlog} \eqn{\mu} and
+\code{sdlog} \eqn{\sigma}.
+
 Other Minimum Hellinger Distance Estimator: 
 \code{\link{mhd_gamma}()}
 }

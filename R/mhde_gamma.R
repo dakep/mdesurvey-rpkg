@@ -1,17 +1,23 @@
 #' Minimum Hellinger Distance Estimator for the Gamma Model
 #'
+#' Compute the MHDE for the shape \eqn{\alpha} and scale \eqn{\theta} of the Gamma model.
+#'
 #' @param x univariate observations from the finite population
-#' @param wgt sampling weights
+#' @param wgts sampling weights
 #' @param initial an initial estimate for the shape and scale parameters. If missing,
 #'   use the MLE.
 #' @param cov_type whether to use the sandwich estimator for the covariance matrix
 #'   the inverse Fisher information under the model, or not estimate the covariance matrix.
+#' @param integration_subdivisions number of partitions to divide the domain of \eqn{\hat f()}
+#'   for Gauss-Kronrod quadrature.
 #' @param optim_method,optim_control method and control options passed on to [stats::optim()].
 #' @importFrom stats dgamma weighted.mean uniroot optim
 #' @importFrom rlang warn
 #' @family Minimum Hellinger Distance Estimator
+#' @seealso [stats::dgamma()] for the parametrization by shape and scale.
 #' @export
 mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model", "none"),
+                       integration_subdivisions = 256,
                        optim_method = "Nelder-Mead", optim_control = list()) {
   cov_type <- match.arg(cov_type)
   if (is.null(wgts)) {
@@ -25,7 +31,8 @@ mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"
 
   bandwidth <- 1.06 * sd(x) * length(x)^(-1/5)
 
-  mhde_integral <- hd_gauss_quadrature(x, wgts, bandwidth, range = c(0, Inf))
+  mhde_integral <- hd_gauss_quadrature(x, wgts, bandwidth, range = c(0, Inf),
+                                       n_subdivisions = integration_subdivisions)
 
   mhd_est <- optim(log(initial), \(params) {
     params <- exp(params)

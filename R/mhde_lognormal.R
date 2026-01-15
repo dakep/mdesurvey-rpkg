@@ -1,16 +1,23 @@
 #' Minimum Hellinger Distance Estimator for the Lognormal Model
 #'
+#' Compute the MHDE for the parameters \eqn{\mu,\sigma} of the Lognormal model.
+#'
 #' @param x univariate observations from the finite population
-#' @param wgt sampling weights
+#' @param wgts sampling weights
 #' @param initial an initial estimate for the shape and scale parameters. If missing,
 #'   use the MLE.
 #' @param log_transform whether to log-transform the data before estimation or not.
+#' @param integration_subdivisions number of partitions to divide the domain of \eqn{\hat f()}
+#'   for Gauss-Kronrod quadrature.
 #' @param optim_method,optim_control method and control options passed on to [stats::optim()].
 #' @importFrom stats dnorm dlnorm weighted.mean uniroot optim
 #' @importFrom rlang warn
 #' @family Minimum Hellinger Distance Estimator
+#' @seealso [stats::dlnorm()] for the parametrization by `meanlog` \eqn{\mu} and
+#'   `sdlog` \eqn{\sigma}.
 #' @export
 mhd_lognorm <- function (x, wgts = NULL, initial, log_transform = FALSE,
+                         integration_subdivisions = 256,
                          optim_method = "Nelder-Mead", optim_control = list()) {
   if (isTRUE(log_transform) && any(x < .Machine$double.eps)) {
     warn("Cannot fit the log-normal distribution on the log scale if 0's are present")
@@ -41,7 +48,8 @@ mhd_lognorm <- function (x, wgts = NULL, initial, log_transform = FALSE,
 
   bandwidth <- 1.06 * mad(x) * length(x)^(-1/5)
 
-  mhde_integral <- hd_gauss_quadrature(x, wgts, bandwidth, range = rg)
+  mhde_integral <- hd_gauss_quadrature(x, wgts, bandwidth, range = rg,
+                                       n_subdivisions = integration_subdivisions)
 
   initial[[2]] <- log(initial[[2]])
   mhd_est <- optim(initial, \(params) {

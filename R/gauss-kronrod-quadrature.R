@@ -25,21 +25,115 @@
   ncol = 3,
   byrow = TRUE)
 
+#' Functor to Create Fixed-grid Gauss-Kronrod Quadrature For Hellinger Affinity
+#'
+#' This creates a function to compute
+#' \deqn{\int \sqrt{ \hat f(x) g(x) }\;\mathrm{d}x,}
+#' or (if `log=TRUE`)
+#' \deqn{\int \exp\{\frac{1}{2} (\log(\hat f(x)) + \log(g(x)) )\}\;\mathrm{d}x,}
+#' for arbitrary non-negative functions \eqn{g()}.
+#' The function is set up such that \eqn{\hat f} is evaluated exactly 21 times in each
+#' subdivision, and does not need to be re-evaluated for different \eqn{g()}.
+#'
+#'
+#' @return a function to evaluate the integral
+#'   \deqn{2 - 2 \int \sqrt{ \hat f(x) g(x) }\;\mathrm{d}x}
+#' @keywords internal
+#' @rdname hd-gauss-kronrod
+hd_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256,
+                                 range, kernel = epanechnikov_kernel) {
+  # Evaluate the KDE at the Gauss-Kronrod evaluation points
+  # We don't need to go beyond the range ±bandwidth because the KDE
+  # will be 0 outside.
+  range_x <- range(x) + c(-bandwidth, bandwidth)
+  if (!missing(range)) {
+    range_x[[1]] <- max(range_x[[1]], range[[1]])
+    range_x[[2]] <- min(range_x[[2]], range[[2]])
+  }
+
+  subintervals <- partition_domain(x, subdivisions = n_subdivisions, bw = bandwidth,
+                                   range = range_x)
+
+  log_sum_wgts <- log(sum(wgts))
+  log_bw <- log(bandwidth)
+
+  gkpts <- lapply(subintervals, \(subint) {
+    lwr <- subint[[1]]
+    upr <- subint[[2]]
+    kronrod <- cbind(.kronrod_basis, numeric(nrow(.kronrod_basis)))
+
+    gauss_scale <- 0.5 * (upr - lwr)
+
+    kronrod[, 1L] <- gauss_scale * (kronrod[, 1L] + 1) + lwr
+    kronrod[, 2L] <- gauss_scale * kronrod[, 2L]
+    kronrod[, 3L] <- gauss_scale * kronrod[, 3L]
+
+    fhat <- vapply(kronrod[, 1L] , FUN.VALUE = numeric(1), FUN = \(gp) {
+      u <- (x - gp) / bandwidth
+      log(sum(wgts * kernel(u)))
+    })
+    kronrod[, 4L] <- fhat - log_bw - log_sum_wgts
+
+    kronrod
+  }) |>
+    do.call(what = rbind)
+
+  colnames(gkpts) <- c("x", "wgt_kronrod", "wgt_gauss", "log_f_hat")
+
+  function (h, only_value = TRUE, log = TRUE) {
+    h <- h(gkpts[, "x"])
+    if (is.null(dim(h))) {
+      h <- matrix(h, ncol = 1)
+    }
+    int_kronrod <- if(isTRUE(log)) {
+      apply(h, 2, \(hi) {
+        crossprod(gkpts[, "wgt_kronrod"], exp(0.5 * (gkpts[, "log_f_hat"] + hi)))[[1, 1]]
+      })
+    } else {
+      apply(h, 2, \(hi) {
+        crossprod(gkpts[, "wgt_kronrod"], exp(0.5 * gkpts[, "log_f_hat"]) * hi)[[1, 1]]
+      })
+    }
+    int_kronrod <- pmax(0, int_kronrod)
+    if (isTRUE(only_value)) {
+      return(2 - 2 * int_kronrod)
+    }
+
+    int_gauss <- if(isTRUE(log)) {
+      apply(h, 2, \(hi) {
+        crossprod(gkpts[, "wgt_gauss"], exp(0.5 * (gkpts[, "log_f_hat"] + hi)))[[1, 1]]
+      })
+    } else {
+      apply(h, 2, \(hi) {
+        crossprod(gkpts[, "wgt_gauss"], exp(0.5 * gkpts[, "log_f_hat"]) * hi)[[1, 1]]
+      })
+    }
+    int_gauss <- pmax(0, int_gauss)
+    list(value = 2 - 2 * int_kronrod,
+         abs.error = 2 * abs(int_kronrod - int_gauss),
+         subdivisions = length(subintervals))
+  }
+}
+
 #' Partition the Domain Into Subdivisions
 #'
-#' This partitions the domain spanned by `x` into a fixed number of partitions such that the
+#' @details
+#' ## Partitioning
+#' The integration considers only the "relevant" domain spanned by `x`.
+#' The span of `x` is partitioned into a fixed number of partitions such that the
 #' KDE \eqn{\hat{f}(x) > 0} within each of those partitions and \eqn{\hat{f}(x) = 0} outside
 #' those partitions.
-#' The algorithm tries to have all partitions roughly the same length, but the
-#' apportionment is greedy and hence likely not the best possible option.
+#' The algorithm for `partition_domain()` tries to have all partitions roughly the same length, but the
+#' apportionment is greedy and hence possibly not the globally best solution.
 #'
 #' @param x numeric vector
 #' @param bw bandwidth of the bounded kernel function
-#' @param subdivisions desired number of subdivisions
-#' @param range the allowable range of `x`
+#' @param subdivisions number of partitions
+#' @param range the allowable range of `x`. If missing, the assumed allowable range is
+#'   \eqn{[\min_i x_i - bw, \max_i x_i + bw]}.
 #' @importFrom rlang warn abort
-#' @return a list of intervals
 #' @keywords internal
+#' @rdname hd-gauss-kronrod
 partition_domain <- function(x, bw, subdivisions, range) {
   if (missing(range)) {
     range <- c(-Inf, Inf)
@@ -120,93 +214,4 @@ partition_domain <- function(x, bw, subdivisions, range) {
   }
 
   return(final_partitions)
-}
-
-#' Functor to Create Fixed-grid Gauss-Kronrod Quadrature For Hellinger Affinity
-#'
-#' This creates a function to compute
-#' \deqn{\int \sqrt{ \hat f(x) g(x) }\;\mathrm{d}x}
-#' or
-#' \deqn{\int \exp\{\frac{1}{2} (\log(\hat f(x)) + \log(g(x)) )\}\;\mathrm{d}x}
-#' for arbitrary non-negative functions \eqn{g()}.
-#' The function is set up such that \eqn{\hat f} is evaluated exactly 21 times in each
-#' subdivision, and does not need to be re-evaluated for different \eqn{g()}.
-#'
-#' The subdivisions are chosen to cover only regions where \eqn{f(x) > 0} using
-#' a greedy partitioning algorithm.
-#'
-#' @return a function to evaluate the integral
-#'   \deqn{2 - 2 \int \sqrt{ \hat f(x) g(x) }\;\mathrm{d}x}
-#' @keywords internal
-hd_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256,
-                                 range, kernel = epanechnikov_kernel) {
-  # Evaluate the KDE at the Gauss-Kronrod evaluation points
-  # We don't need to go beyond the range ±bandwidth because the KDE
-  # will be 0 outside.
-  range_x <- range(x) + c(-bandwidth, bandwidth)
-  if (!missing(range)) {
-    range_x[[1]] <- max(range_x[[1]], range[[1]])
-    range_x[[2]] <- min(range_x[[2]], range[[2]])
-  }
-
-  subintervals <- partition_domain(x, subdivisions = n_subdivisions, bw = bandwidth,
-                                   range = range_x)
-
-  log_sum_wgts <- log(sum(wgts))
-  log_bw <- log(bandwidth)
-
-  gkpts <- lapply(subintervals, \(subint) {
-    lwr <- subint[[1]]
-    upr <- subint[[2]]
-    kronrod <- cbind(.kronrod_basis, numeric(nrow(.kronrod_basis)))
-
-    gauss_scale <- 0.5 * (upr - lwr)
-
-    kronrod[, 1L] <- gauss_scale * (kronrod[, 1L] + 1) + lwr
-    kronrod[, 2L] <- gauss_scale * kronrod[, 2L]
-    kronrod[, 3L] <- gauss_scale * kronrod[, 3L]
-
-    fhat <- vapply(kronrod[, 1L] , FUN.VALUE = numeric(1), FUN = \(gp) {
-      u <- (x - gp) / bandwidth
-      log(sum(wgts * kernel(u)))
-    })
-    kronrod[, 4L] <- fhat - log_bw - log_sum_wgts
-
-    kronrod
-  }) |>
-    do.call(what = rbind)
-
-  colnames(gkpts) <- c("x", "wgt_kronrod", "wgt_gauss", "log_f_hat")
-
-  function (h, only_value = TRUE, log = TRUE) {
-    h <- h(gkpts[, "x"])
-    if (is.null(dim(h))) {
-      h <- matrix(h, ncol = 1)
-    }
-    kronrod <- if(isTRUE(log)) {
-      apply(h, 2, \(hi) {
-        crossprod(gkpts[, "wgt_kronrod"], exp(0.5 * (gkpts[, "log_f_hat"] + hi)))[[1, 1]]
-      })
-    } else {
-      apply(h, 2, \(hi) {
-        crossprod(gkpts[, "wgt_kronrod"], exp(0.5 * gkpts[, "log_f_hat"]) * hi)[[1, 1]]
-      })
-    }
-    if (isTRUE(only_value)) {
-      return(2 - 2 * kronrod)
-    }
-
-    gauss <- if(isTRUE(log)) {
-      apply(h, 2, \(hi) {
-        crossprod(gkpts[, "wgt_gauss"], exp(0.5 * (gkpts[, "log_f_hat"] + hi)))[[1, 1]]
-      })
-    } else {
-      apply(h, 2, \(hi) {
-        crossprod(gkpts[, "wgt_gauss"], exp(0.5 * gkpts[, "log_f_hat"]) * hi)[[1, 1]]
-      })
-    }
-    list(value = 2 - 2 * kronrod,
-         abs.error = 2 * abs(kronrod - gauss),
-         subdivisions = length(subintervals))
-  }
 }

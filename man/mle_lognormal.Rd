@@ -12,7 +12,7 @@ mle_lognormal(x, wgts = NULL)
 \item{wgts}{sampling weights}
 }
 \value{
-a list with `estimates`, the covariance `cov` and the density function.
+a list with \code{estimates}, the covariance \code{cov} and the density function.
 }
 \description{
 Maximum Likelihood Estimator for the Lognormal Model
