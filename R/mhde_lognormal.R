@@ -44,7 +44,7 @@ mhd_lognorm <- function (x, wgts = NULL, initial, log_transform = FALSE,
     }
   }
 
-  environment(dfun_factory) <- baseenv()
+  environment(dfun_factory) <- environment(mhd_lognorm)
 
   bandwidth <- 1.06 * mad(x) * length(x)^(-1/5)
 
