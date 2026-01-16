@@ -7,7 +7,7 @@
 #' @param initial an initial estimate for the shape and scale parameters. If missing,
 #'   use the MLE.
 #' @param cov_type whether to use the sandwich estimator for the covariance matrix
-#'   the inverse Fisher information under the model, or not estimate the covariance matrix.
+#'   the inverse Fisher information under the model.
 #' @param integration_subdivisions number of partitions to divide the domain of \eqn{\hat f()}
 #'   for Gauss-Kronrod quadrature.
 #' @param optim_method,optim_control method and control options passed on to [stats::optim()].
@@ -16,7 +16,7 @@
 #' @family Minimum Hellinger Distance Estimator
 #' @seealso [stats::dgamma()] for the parametrization by shape and scale.
 #' @export
-mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model", "none"),
+mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"),
                        integration_subdivisions = 256,
                        optim_method = "Nelder-Mead", optim_control = list()) {
   cov_type <- match.arg(cov_type)
@@ -51,9 +51,16 @@ mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"
   estimates <- exp(mhd_est$par)
   names(estimates) <- c("shape", "scale")
 
+  model_cov <- matrix(c(trigamma(estimates[[1]]),
+                        1 / estimates[[2]],
+                        1 / estimates[[2]],
+                        estimates[[1]] / estimates[[2]]^2),
+                      ncol = 2) |>
+    solve()
+
   if (identical(cov_type, "sandwich")) {
     # Sandwich estimator of the covariance matrix
-    A_est_els <- mhde_integral(log = FALSE, \(xint) {
+    A_est_els <- mhde_integral(log = FALSE, non_negative_integrand = FALSE, \(xint) {
       score <- cbind(log(xint) - log(estimates[['scale']]) - digamma(estimates[['shape']]),
                      (xint/estimates[['scale']] - estimates[['shape']]) / estimates[['scale']])
 
@@ -91,12 +98,7 @@ mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"
       solve(A_est, sigma_hat) %*% solve(A_est)
     }, error = \(cnd) {
       warning("Sandwich estimator is singular. Returning model-based covariance estimate.")
-      matrix(c(trigamma(estimates[[1]]),
-               1 / estimates[[2]],
-               1 / estimates[[2]],
-               estimates[[1]] / estimates[[2]]^2),
-             ncol = 2) |>
-        solve()
+      model_cov
     })
 
     estimated_bias <- c(
@@ -154,12 +156,7 @@ mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"
     #
     # estimated_bias <- -solve(A_est, ds) / length(x)
   } else if (identical(cov_type, "model")) {
-    covest <- matrix(c(trigamma(estimates[[1]]),
-                       1 / estimates[[2]],
-                       1 / estimates[[2]],
-                       estimates[[1]] / estimates[[2]]^2),
-                     ncol = 2) |>
-      solve()
+    covest <- model_cov
 
     estimated_bias <- c(
       3 / (length(x) * 2 * estimates[['shape']]^2 * psigamma(estimates[['shape']], deriv = 2)),
@@ -170,7 +167,7 @@ mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"
         (length(x) * estimates[['shape']] *
            (estimates[['shape']] * psigamma(estimates[['shape']], deriv = 2) - 1)))
   } else {
-    covest <- NULL
+    covest <- model_cov
     estimated_bias <- numeric(2)
   }
 
@@ -178,6 +175,7 @@ mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"
     list(estimates      = estimates,
          bias           = estimated_bias,
          cov            = covest,
+         cov_model      = model_cov,
          mhd            = mhd_est$value,
          initial        = initial,
          dfun           = dgamma,

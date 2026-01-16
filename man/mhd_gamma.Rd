@@ -8,7 +8,7 @@ mhd_gamma(
   x,
   wgts = NULL,
   initial,
-  cov_type = c("sandwich", "model", "none"),
+  cov_type = c("sandwich", "model"),
   integration_subdivisions = 256,
   optim_method = "Nelder-Mead",
   optim_control = list()
@@ -23,7 +23,7 @@ mhd_gamma(
 use the MLE.}
 
 \item{cov_type}{whether to use the sandwich estimator for the covariance matrix
-the inverse Fisher information under the model, or not estimate the covariance matrix.}
+the inverse Fisher information under the model.}
 
 \item{integration_subdivisions}{number of partitions to divide the domain of \eqn{\hat f()}
 for Gauss-Kronrod quadrature.}

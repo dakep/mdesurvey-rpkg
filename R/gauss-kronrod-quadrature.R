@@ -80,7 +80,7 @@ hd_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256,
 
   colnames(gkpts) <- c("x", "wgt_kronrod", "wgt_gauss", "log_f_hat")
 
-  function (h, only_value = TRUE, log = TRUE) {
+  function (h, only_value = TRUE, log = TRUE, non_negative_integrand = TRUE) {
     h <- h(gkpts[, "x"])
     if (is.null(dim(h))) {
       h <- matrix(h, ncol = 1)
@@ -94,7 +94,9 @@ hd_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256,
         crossprod(gkpts[, "wgt_kronrod"], exp(0.5 * gkpts[, "log_f_hat"]) * hi)[[1, 1]]
       })
     }
-    int_kronrod <- pmax(0, int_kronrod)
+    if (isTRUE(non_negative_integrand)) {
+      int_kronrod <- pmax(0, int_kronrod)
+    }
     if (isTRUE(only_value)) {
       return(2 - 2 * int_kronrod)
     }
@@ -108,7 +110,9 @@ hd_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256,
         crossprod(gkpts[, "wgt_gauss"], exp(0.5 * gkpts[, "log_f_hat"]) * hi)[[1, 1]]
       })
     }
-    int_gauss <- pmax(0, int_gauss)
+    if (isTRUE(non_negative_integrand)) {
+      int_gauss <- pmax(0, int_gauss)
+    }
     list(value = 2 - 2 * int_kronrod,
          abs.error = 2 * abs(int_kronrod - int_gauss),
          subdivisions = length(subintervals))
