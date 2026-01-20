@@ -10,6 +10,8 @@
 #'   the inverse Fisher information under the model.
 #' @param integration_subdivisions number of partitions to divide the domain of \eqn{\hat f()}
 #'   for Gauss-Kronrod quadrature.
+#' @param bw bandwidth for the HT-adjusted KDE. By default,
+#'   use Scott's rule (see [stats::bw.nrd()]).
 #' @param optim_method,optim_control method and control options passed on to [stats::optim()].
 #' @importFrom stats dgamma weighted.mean uniroot optim
 #' @importFrom rlang warn
@@ -18,6 +20,7 @@
 #' @export
 mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"),
                        integration_subdivisions = 256,
+                       bw,
                        optim_method = "Nelder-Mead", optim_control = list()) {
   cov_type <- match.arg(cov_type)
   if (is.null(wgts)) {
@@ -26,12 +29,16 @@ mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"
     wgts <- rep.int(wgts, length(x))
   }
   if (missing(initial)) {
-    initial <- gamma_mle(x, wgts)$estimates
+    initial <- mle_gamma(x, wgts)$estimates
   }
 
-  bandwidth <- 1.06 * sd(x) * length(x)^(-1/5)
+  if (missing(bw)) {
+    bw <- 1.06 * sd(x) * length(x)^(-1/5)
+  }
 
-  mhde_integral <- hd_gauss_quadrature(x, wgts, bandwidth, range = c(0, Inf),
+  mhde_integral <- hd_gauss_quadrature(x, wgts,
+                                       bandwidth = bw,
+                                       range = c(0, Inf),
                                        n_subdivisions = integration_subdivisions)
 
   mhd_est <- optim(log(initial), \(params) {
@@ -83,9 +90,9 @@ mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"
     A_est <- matrix(A_est_els[c(1, 2, 2, 3)], ncol = 2) / 4 - 0.5
 
     fhat <- vapply(x, FUN.VALUE = numeric(1), FUN = \(gp) {
-      u <- (x - gp) / bandwidth
+      u <- (x - gp) / bw
       sum(wgts * epanechnikov_kernel(u))
-    }) / (bandwidth * sum(wgts))
+    }) / (bw * sum(wgts))
 
     score <- cbind(log(x) - log(estimates[['scale']]) - digamma(estimates[['shape']]),
                    (x / estimates[['scale']] - estimates[['shape']]) / estimates[['scale']])

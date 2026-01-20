@@ -2,11 +2,13 @@
 
 export(mhd_gamma)
 export(mhd_lognorm)
+export(mhd_weibull)
 importFrom(rlang,abort)
 importFrom(rlang,warn)
 importFrom(stats,dgamma)
 importFrom(stats,dlnorm)
 importFrom(stats,dnorm)
+importFrom(stats,dweibull)
 importFrom(stats,optim)
 importFrom(stats,uniroot)
 importFrom(stats,weighted.mean)

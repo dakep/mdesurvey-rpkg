@@ -6,6 +6,8 @@
 #' @param wgts sampling weights
 #' @param initial an initial estimate for the shape and scale parameters. If missing,
 #'   use the MLE.
+#' @param bw bandwidth for the HT-adjusted KDE. By default,
+#'   use Scott's rule (see [stats::bw.nrd()]).
 #' @param log_transform whether to log-transform the data before estimation or not.
 #' @param integration_subdivisions number of partitions to divide the domain of \eqn{\hat f()}
 #'   for Gauss-Kronrod quadrature.
@@ -17,6 +19,7 @@
 #'   `sdlog` \eqn{\sigma}.
 #' @export
 mhd_lognorm <- function (x, wgts = NULL, initial, log_transform = FALSE,
+                         bw,
                          integration_subdivisions = 256,
                          optim_method = "Nelder-Mead", optim_control = list()) {
   if (isTRUE(log_transform) && any(x < .Machine$double.eps)) {
@@ -46,9 +49,13 @@ mhd_lognorm <- function (x, wgts = NULL, initial, log_transform = FALSE,
 
   environment(dfun_factory) <- environment(mhd_lognorm)
 
-  bandwidth <- 1.06 * mad(x) * length(x)^(-1/5)
+  if (missing(bw)) {
+    bw <- 1.06 * mad(x) * length(x)^(-1/5)
+  }
 
-  mhde_integral <- hd_gauss_quadrature(x, wgts, bandwidth, range = rg,
+  mhde_integral <- hd_gauss_quadrature(x, wgts,
+                                       bandwidth = bw,
+                                       range = rg,
                                        n_subdivisions = integration_subdivisions)
 
   initial[[2]] <- log(initial[[2]])
@@ -79,30 +86,4 @@ mhd_lognorm <- function (x, wgts = NULL, initial, log_transform = FALSE,
          optimizer_code = mhd_est$convergence,
          optimizer_msg  = mhd_est$message),
     class = 'survey_mde')
-}
-
-#' Maximum Likelihood Estimator for the Lognormal Model
-#'
-#' @param x univariate observations from the finite population
-#' @param wgts sampling weights
-#' @return a list with `estimates`, the covariance `cov` and the density function.
-#' @importFrom stats dlnorm weighted.mean
-#' @keywords internal
-mle_lognormal <- function (x, wgts = NULL) {
-  avg <- if (is.null(wgts)) {
-    mean
-  } else {
-    \(x) weighted.mean(x, w = wgts)
-  }
-
-  logx <- log(x)
-  estimates <- c("mean" = avg(logx),
-                 "sd"   = NA_real_)
-  estimates[['sd']] <- sqrt(avg((logx - estimates[['mean']])^2))
-
-  covest <- matrix(c(estimates[['sd']]^2, 0, 0, 0.5 * estimates[['sd']]^2), ncol = 2)
-
-  list(estimates = estimates,
-       cov       = covest,
-       dfun      = dlnorm)
 }

@@ -10,6 +10,7 @@ mhd_gamma(
   initial,
   cov_type = c("sandwich", "model"),
   integration_subdivisions = 256,
+  bw,
   optim_method = "Nelder-Mead",
   optim_control = list()
 )
@@ -28,6 +29,9 @@ the inverse Fisher information under the model.}
 \item{integration_subdivisions}{number of partitions to divide the domain of \eqn{\hat f()}
 for Gauss-Kronrod quadrature.}
 
+\item{bw}{bandwidth for the HT-adjusted KDE. By default,
+use Scott's rule (see \code{\link[stats:bandwidth]{stats::bw.nrd()}}).}
+
 \item{optim_method, optim_control}{method and control options passed on to \code{\link[stats:optim]{stats::optim()}}.}
 }
 \description{
@@ -37,6 +41,7 @@ Compute the MHDE for the shape \eqn{\alpha} and scale \eqn{\theta} of the Gamma 
 \code{\link[stats:GammaDist]{stats::dgamma()}} for the parametrization by shape and scale.
 
 Other Minimum Hellinger Distance Estimator: 
-\code{\link{mhd_lognorm}()}
+\code{\link{mhd_lognorm}()},
+\code{\link{mhd_weibull}()}
 }
 \concept{Minimum Hellinger Distance Estimator}
