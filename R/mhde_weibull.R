@@ -21,7 +21,7 @@ mhd_weibull <- function (x, wgts = NULL, initial, integration_subdivisions = 256
     wgts <- rep.int(1 / length(x), length(x))
   }
   if (missing(initial)) {
-    initial <- mom_weibull(x, wgts)
+    initial <- mom_weibull(x, wgts)$estimates
   }
 
   if (missing(bw)) {
@@ -74,7 +74,7 @@ mhd_weibull <- function (x, wgts = NULL, initial, integration_subdivisions = 256
 #' @return a list with `estimates`, the covariance `cov` and the density function.
 #' @importFrom stats dweibull weighted.mean uniroot
 #' @keywords internal
-mom_weibull <- function (x, wgts, shape_range = c(0.02, 100)) {
+mom_weibull <- function (x, wgts, shape_range = c(0.02, 100), cov = FALSE) {
   mu <- weighted.mean(x, w = wgts)
   sig2 <- weighted.mean((x - mu)^2, w = wgts)
   cv2_hat <- sig2 / mu^2
@@ -97,5 +97,21 @@ mom_weibull <- function (x, wgts, shape_range = c(0.02, 100)) {
     lambda_est <- NA_real_
   }
 
-  c(shape = k_est, scale = lambda_est)
+  estimates <- c(shape = k_est, scale = lambda_est)
+
+  covest <- if (isTRUE(cov)) {
+    euler_gamma <- 0.57721566490153286060651209008240
+    pisq_6 <- 1.6449340668482264364724151666460 # pi^2/6
+    covest <- matrix(c((1 - 2 * euler_gamma + euler_gamma^2 + pisq_6) / estimates[['shape']],
+                       (euler_gamma - 1) / estimates[['scale']],
+                       (euler_gamma - 1) / estimates[['scale']],
+                       estimates[['shape']]^2 / estimates[['scale']]^2),
+                     ncol = 2) |>
+      solve()
+  } else {
+    NULL
+  }
+
+  list(estimates = estimates,
+       cov       = covest)
 }

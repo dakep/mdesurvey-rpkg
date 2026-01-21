@@ -4,7 +4,7 @@
 \alias{mom_weibull}
 \title{Method of Moments Estimator for the Weibull Model}
 \usage{
-mom_weibull(x, wgts, shape_range = c(0.02, 100))
+mom_weibull(x, wgts, shape_range = c(0.02, 100), cov = FALSE)
 }
 \arguments{
 \item{x}{univariate observations from the finite population}
