@@ -98,7 +98,7 @@ hd_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256,
       int_kronrod <- pmax(0, int_kronrod)
     }
     if (isTRUE(only_value)) {
-      return(2 - 2 * int_kronrod)
+      return(int_kronrod)
     }
 
     int_gauss <- if(isTRUE(log)) {
@@ -113,8 +113,8 @@ hd_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256,
     if (isTRUE(non_negative_integrand)) {
       int_gauss <- pmax(0, int_gauss)
     }
-    list(value = 2 - 2 * int_kronrod,
-         abs.error = 2 * abs(int_kronrod - int_gauss),
+    list(value = int_kronrod,
+         abs.error = abs(int_kronrod - int_gauss),
          subdivisions = length(subintervals))
   }
 }

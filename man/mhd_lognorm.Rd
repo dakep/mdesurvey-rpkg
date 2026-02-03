@@ -6,30 +6,40 @@
 \usage{
 mhd_lognorm(
   x,
-  wgts = NULL,
+  design,
   initial,
+  sandwich_cov = TRUE,
+  na.rm = FALSE,
   log_transform = FALSE,
-  bw,
   integration_subdivisions = 256,
+  bw,
   optim_method = "Nelder-Mead",
   optim_control = list()
 )
 }
 \arguments{
-\item{x}{univariate observations from the finite population}
+\item{x}{a formula, symbol, expression, vector, or matrix specifying the observations.
+The objects are first looked up in the provided \code{design}, then in the calling environment.}
 
-\item{wgts}{sampling weights}
+\item{design}{the survey design created by \code{\link[survey:svydesign]{survey::svydesign()}} and friends.}
 
 \item{initial}{an initial estimate for the shape and scale parameters. If missing,
 use the MLE.}
 
-\item{log_transform}{whether to log-transform the data before estimation or not.}
+\item{sandwich_cov}{if \code{TRUE}, compute the sandwich estimator for the covariance matrix.
+If \code{FALSE}, uses the inverse of the Fisher information under independence and the
+effective number of observations estimated from the scores.
+The only reason for setting this to \code{FALSE} is to increase computation speed when the
+covariance matrix is not needed.
+Otherwise, use \code{\link[=vcov]{vcov()}} to get the desired estimator of the covariance matrix.}
 
-\item{bw}{bandwidth for the HT-adjusted KDE. By default,
-use Scott's rule (see \code{\link[stats:bandwidth]{stats::bw.nrd()}}).}
+\item{na.rm}{a logical evaluating to \code{TRUE} or \code{FALSE} indicating whether \code{NA} values
+should be omitted.}
 
 \item{integration_subdivisions}{number of partitions to divide the domain of \eqn{\hat f()}
 for Gauss-Kronrod quadrature.}
+
+\item{bw}{bandwidth for the HT-adjusted KDE. Uses \code{\link[stats:bandwidth]{stats::bw.nrd()}} as default.}
 
 \item{optim_method, optim_control}{method and control options passed on to \code{\link[stats:optim]{stats::optim()}}.}
 }
@@ -42,6 +52,7 @@ Compute the MHDE for the parameters \eqn{\mu,\sigma} of the Lognormal model.
 
 Other Minimum Hellinger Distance Estimator: 
 \code{\link{mhd_gamma}()},
-\code{\link{mhd_weibull}()}
+\code{\link{mhd_weibull}()},
+\code{\link{survey_mhde}()}
 }
 \concept{Minimum Hellinger Distance Estimator}

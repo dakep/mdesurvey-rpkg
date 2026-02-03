@@ -2,194 +2,145 @@
 #'
 #' Compute the MHDE for the shape \eqn{\alpha} and scale \eqn{\theta} of the Gamma model.
 #'
-#' @param x univariate observations from the finite population
-#' @param wgts sampling weights
+#' @inheritParams survey_mhde
 #' @param initial an initial estimate for the shape and scale parameters. If missing,
 #'   use the MLE.
-#' @param cov_type whether to use the sandwich estimator for the covariance matrix
-#'   the inverse Fisher information under the model.
-#' @param integration_subdivisions number of partitions to divide the domain of \eqn{\hat f()}
-#'   for Gauss-Kronrod quadrature.
-#' @param bw bandwidth for the HT-adjusted KDE. By default,
-#'   use Scott's rule (see [stats::bw.nrd()]).
-#' @param optim_method,optim_control method and control options passed on to [stats::optim()].
-#' @importFrom stats dgamma weighted.mean uniroot optim
-#' @importFrom rlang warn
+#' @param sandwich_cov if `TRUE`, compute the sandwich estimator for the covariance matrix.
+#'   If `FALSE`, uses the inverse of the Fisher information under independence and the
+#'   effective number of observations estimated from the scores.
+#'   The only reason for setting this to `FALSE` is to increase computation speed when the
+#'   covariance matrix is not needed.
+#'   Otherwise, use [vcov()] to get the desired estimator of the covariance matrix.
+#' @importFrom stats dgamma weighted.mean vcov
+#' @importFrom rlang warn abort enquo
+#' @importFrom survey svydesign svymean
 #' @family Minimum Hellinger Distance Estimator
 #' @seealso [stats::dgamma()] for the parametrization by shape and scale.
 #' @export
-mhd_gamma <- function (x, wgts = NULL, initial, cov_type = c("sandwich", "model"),
-                       integration_subdivisions = 256,
-                       bw,
+mhd_gamma <- function (x, design, initial,
+                       na.rm = FALSE, sandwich_cov = TRUE,
+                       integration_subdivisions = 256, bw,
                        optim_method = "Nelder-Mead", optim_control = list()) {
-  cov_type <- match.arg(cov_type)
-  if (is.null(wgts)) {
-    wgts <- rep.int(1 / length(x), length(x))
-  } else if (length(wgts) == 1L) {
-    wgts <- rep.int(wgts, length(x))
+  x <- enquo(x)
+  svy <- .extract_survey_values(!!x, design, na.rm = na.rm)
+  wgts <- svy$wgts
+
+  if (dim(svy$x)[[2]] > 1L) {
+    abort("Only univariate values are supported")
   }
+  svy$x <- svy$x[,1]
+  nobs <- length(svy$x)
+
   if (missing(initial)) {
-    initial <- mle_gamma(x, wgts)$estimates
+    initial <- mle_gamma(svy$x, wgts)$estimates
   }
-
-  if (missing(bw)) {
-    bw <- 1.06 * sd(x) * length(x)^(-1/5)
-  }
-
-  mhde_integral <- hd_gauss_quadrature(x, wgts,
-                                       bandwidth = bw,
-                                       range = c(0, Inf),
-                                       n_subdivisions = integration_subdivisions)
-
-  mhd_est <- optim(log(initial), \(params) {
-    params <- exp(params)
-    mhde_integral(\(xint) {
-      dgamma(xint, shape = params[[1]], scale = params[[2]], log = TRUE)
-    })
-  },
-  method = optim_method,
-  control = optim_control)
-
-  if (mhd_est$convergence != 0) {
-    warn(sprintf("Optimizer did not converge (code %d): %s",
-                 mhd_est$convergence, paste0('', mhd_est$message)))
-  }
-
-  estimates <- exp(mhd_est$par)
-  names(estimates) <- c("shape", "scale")
-
-  model_cov <- matrix(c(trigamma(estimates[[1]]),
-                        1 / estimates[[2]],
-                        1 / estimates[[2]],
-                        estimates[[1]] / estimates[[2]]^2),
-                      ncol = 2) |>
-    solve()
-
-  if (identical(cov_type, "sandwich")) {
-    # Sandwich estimator of the covariance matrix
-    A_est_els <- mhde_integral(log = FALSE, non_negative_integrand = FALSE, \(xint) {
-      score <- cbind(log(xint) - log(estimates[['scale']]) - digamma(estimates[['shape']]),
-                     (xint/estimates[['scale']] - estimates[['shape']]) / estimates[['scale']])
-
-      hess <- cbind(0.5 * score[, 1]^2 -
-                      trigamma(estimates[['shape']]),
-                    0.5 * score[, 1] * score[, 2] -
-                      1 / estimates[['scale']],
-                    0.5 * score[, 2]^2 +
-                      estimates[['shape']] / estimates[['scale']]^2 -
-                      2 * xint / estimates[['scale']]^3)
-
-      f_theta <- dgamma(xint, shape = estimates[['shape']], scale = estimates[['scale']])
-      sqrt(f_theta) * hess
-    })
-
-    # Combine the two steps
-    # (1) A_est_els = -0.5 * A_est_els + 1  # because mhde_integral returns 2 - 2 * A_est_els
-    # (2) A_est = -0.5 * A_est_els
-    # into one
-    A_est <- matrix(A_est_els[c(1, 2, 2, 3)], ncol = 2) / 4 - 0.5
-
-    fhat <- vapply(x, FUN.VALUE = numeric(1), FUN = \(gp) {
-      u <- (x - gp) / bw
-      sum(wgts * epanechnikov_kernel(u))
-    }) / (bw * sum(wgts))
-
-    score <- cbind(log(x) - log(estimates[['scale']]) - digamma(estimates[['shape']]),
-                   (x / estimates[['scale']] - estimates[['shape']]) / estimates[['scale']])
-
-    sigma_hat <- cov(0.25 * score *
-                       sqrt(dgamma(x, shape = estimates[['shape']], scale = estimates[['scale']])) /
-                       sqrt(fhat))
-
-    covest <- tryCatch({
-      solve(A_est, sigma_hat) %*% solve(A_est)
-    }, error = \(cnd) {
-      warning("Sandwich estimator is singular. Returning model-based covariance estimate.")
-      model_cov
-    })
-
-    estimated_bias <- c(
-      3 / (length(x) * 2 * estimates[['shape']]^2 * psigamma(estimates[['shape']], deriv = 2)),
-      -estimates[['scale']] * (
-        3 * estimates[['shape']] * psigamma(estimates[['shape']], deriv = 2) +
-          psigamma(estimates[['shape']], deriv = 1) +
-          estimates[['shape']] * psigamma(estimates[['shape']], deriv = 1)^2) /
-        (length(x) * estimates[['shape']] *
-           (estimates[['shape']] * psigamma(estimates[['shape']], deriv = 2) - 1)))
-
-    ## Bias correction ##
-    # bias_vec <- mhde_integral(log = FALSE, \(xint) {
-    #   score <- cbind(log(xint) - log(estimates[['scale']]) - digamma(estimates[['shape']]),
-    #                  (xint/estimates[['scale']] - estimates[['shape']]) / estimates[['scale']])
-    #
-    #   # hessian elements [1, 1], [1,2], and [2, 2]
-    #   hess <- cbind(0.5 * score[, 1]^2 -
-    #                   trigamma(estimates[['shape']]),
-    #                 0.5 * score[, 1] * score[, 2] -
-    #                   1 / estimates[['scale']],
-    #                 0.5 * score[, 2]^2 +
-    #                   estimates[['shape']] / estimates[['scale']]^2 -
-    #                   2 * xint / estimates[['scale']]^3)
-    #
-    #   hess_col <- function (j, k) {
-    #     col <- c(1, 2, 2, 3)[[(j - 1) * 2 + k]]
-    #     hess[, col]
-    #   }
-    #
-    #   third_score <- array(dim = c(2, 2, 2, length(xint)), data = 0)
-    #   third_score[1, 1, 1, ] <- -psigamma(estimates[['shape']], deriv = 2)
-    #   third_score[2, 2, 2, ] <- 6 * xint / estimates[['scale']]^4 - 2 * estimates[['shape']] / estimates[['scale']]^3
-    #   third_score[1, 2, 2, ] <- 1 / estimates[['scale']]^2
-    #
-    #   third_deriv <- matrix(0, nrow = length(xint), ncol = 2^3)
-    #
-    #   for (j in 1:2) {
-    #     for (k in 1:2) {
-    #       for (l in 1:2) {
-    #         col <- (j - 1) * (2^2) + (k - 1) * 2 + l
-    #         third_deriv[, col] <- third_score[j, k, l, ] +
-    #           0.5 * (score[, j] * hess_col(k, l) + score[, k] * hess_col(j, l) + score[, l] * hess_col(j, k)) +
-    #           0.25 * score[, j] * score[, k] * score[, l]
-    #       }
-    #     }
-    #   }
-    #
-    #   f_theta <- dgamma(xint, shape = estimates[['shape']], scale = estimates[['scale']])
-    #   0.5 * sqrt(f_theta) * third_deriv
-    # })
-    #
-    # bias_mat <- array(0.5 * bias_vec - 1, dim = rep.int(2, 3))
-    # ds <- apply(bias_mat, 3, \(b) sum(colSums(covest * b)))
-    #
-    # estimated_bias <- -solve(A_est, ds) / length(x)
-  } else if (identical(cov_type, "model")) {
-    covest <- model_cov
-
-    estimated_bias <- c(
-      3 / (length(x) * 2 * estimates[['shape']]^2 * psigamma(estimates[['shape']], deriv = 2)),
-      -estimates[['scale']] * (
-        3 * estimates[['shape']] * psigamma(estimates[['shape']], deriv = 2) +
-          psigamma(estimates[['shape']], deriv = 1) +
-          estimates[['shape']] * psigamma(estimates[['shape']], deriv = 1)^2) /
-        (length(x) * estimates[['shape']] *
-           (estimates[['shape']] * psigamma(estimates[['shape']], deriv = 2) - 1)))
+  if (!is.null(names(initial))) {
+    initial <- initial[c("shape", "scale")]
   } else {
-    covest <- model_cov
-    estimated_bias <- numeric(2)
+    names(initial) <- c("shape", "scale")
   }
 
-  structure(
-    list(estimates      = estimates,
-         bias           = estimated_bias,
-         cov            = covest,
-         cov_model      = model_cov,
-         mhd            = mhd_est$value,
-         initial        = initial,
-         dfun           = dgamma,
-         model          = "gamma",
-         optimizer_code = mhd_est$convergence,
-         optimizer_msg  = mhd_est$message),
-    class = 'survey_mde')
+  raw_scores <- function (x, est) {
+    cbind(log(x) - log(est[['scale']]) - digamma(est[['shape']]),
+          (x / est[['scale']] - est[['shape']]) / est[['scale']])
+  }
+
+  fisher_inf <- function (estimates) {
+    matrix(c(trigamma(estimates[['shape']]),
+             1 / estimates[['scale']],
+             1 / estimates[['scale']],
+             estimates[['shape']] / estimates[['scale']]^2),
+           ncol = 2)
+  }
+
+  covfun <- if (isFALSE(sandwich_cov)) {
+    function (estimates, mhde_integral) {
+      score <- raw_scores(svy$x, estimates)
+      design$variables <- data.frame(score = score)
+      design_vcov <- vcov(svymean(~ score.1 + score.2, design = design))
+      finf <- fisher_inf(estimates)
+      neff <- diag(finf) / diag(design_vcov)
+
+      covest <- solve(finf) / outer(sqrt(neff), sqrt(neff))
+
+      dimnames(covest) <- list(names(estimates), names(estimates))
+      attr(covest, "neff") <- neff
+      attr(covest, "type") <- 'model'
+      covest
+    }
+  } else {
+    function (estimates, mhde_integral) {
+      # Sandwich estimator of the covariance matrix
+      A_est_els <- mhde_integral(log = FALSE, non_negative_integrand = FALSE, \(xint) {
+        score <- raw_scores(xint, estimates)
+        hess <- cbind(0.5 * score[, 1]^2 -
+                        trigamma(estimates[['shape']]),
+                      0.5 * score[, 1] * score[, 2] -
+                        1 / estimates[['scale']],
+                      0.5 * score[, 2]^2 +
+                        estimates[['shape']] / estimates[['scale']]^2 -
+                        2 * xint / estimates[['scale']]^3)
+
+        f_theta <- dgamma(xint, shape = estimates[['shape']], scale = estimates[['scale']])
+        sqrt(f_theta) * hess
+      })
+
+      A_est <- matrix(0.5 * A_est_els[c(1, 2, 2, 3)], ncol = 2)
+      score <- raw_scores(svy$x, estimates)
+      design$variables <- data.frame(score = score)
+      design_vcov <- vcov(svymean(~ score.1 + score.2, design = design))
+
+      covest <- tryCatch({
+        solve(A_est, design_vcov) %*% solve(A_est) / 16
+      }, error = \(cnd) {
+        warning("Sandwich estimator is singular.")
+        'singular'
+      })
+
+      dimnames(covest) <- list(names(estimates), names(estimates))
+      attr(covest, "neff") <- diag(fisher_inf(estimates)) / diag(design_vcov)
+      attr(covest, "type") <- 'sandwich'
+      covest
+    }
+  }
+
+  obj <- survey_mhde(!!x,
+                     design,
+                     initial,
+                     model_dfun = \(x, parameters, log) {
+                       dgamma(x, shape = parameters[['shape']], scale = parameters[['scale']],
+                              log = log)
+                     },
+                     cov_fun                  = covfun,
+                     model_domain             = c(0, Inf),
+                     parameter_transform      = log,
+                     parameter_transform_inv  = exp,
+                     integration_subdivisions = integration_subdivisions,
+                     bw                       = bw,
+                     optim_method             = optim_method,
+                     optim_control            = optim_control)
+
+  obj$fisher_inf <- fisher_inf(obj$estimates)
+  obj$neff_scores <- attr(obj$cov, "neff")
+  names(obj$neff_scores) <- names(obj$estimates)
+  attr(obj$cov, "neff") <- NULL
+  class(obj) <- c("survey_mde_gamma", class(obj))
+
+  obj
+}
+
+#' @rdname vcov
+#' @export
+vcov.survey_mde_gamma <- function (object, type = c("sandwich", "model"),
+                                   n = c("score", "kish"), ...) {
+  type_missing <- missing(type)
+  if (!is.numeric(n)) {
+    n <- switch(match.arg(n),
+                score = object$neff_score,
+                kish  = object$neff_kish,
+                object$nobs)
+  }
+  .vcov(object, type = match.arg(type), n = n, enforce_type = !type_missing)
 }
 
 #' Maximum Likelihood Estimator for the Gamma Model
