@@ -53,7 +53,7 @@ mhd_lognorm <- function (x, design, initial,
   } else {
     model_domain <- c(0, Inf)
     dfun <- function (x, parameters, log) {
-      dlnorm(x, meanlog = parameters[[1]], sdlog = parameters[[2]], log = TRUE)
+      dlnorm(x, meanlog = parameters[[1]], sdlog = parameters[[2]], log = log)
     }
   }
 
@@ -61,6 +61,12 @@ mhd_lognorm <- function (x, design, initial,
     initial <- initial[c("meanlog", "sdlog")]
   } else {
     names(initial) <- c("meanlog", "sdlog")
+  }
+
+  if (isTRUE(log_transform)) {
+    trans_xint <- identity
+  } else {
+    trans_xint <- log
   }
 
   raw_scores <- function (x, est, z) {
@@ -98,7 +104,7 @@ mhd_lognorm <- function (x, design, initial,
     function (estimates, mhde_integral) {
       # Sandwich estimator of the covariance matrix
       A_est_els <- mhde_integral(log = FALSE, non_negative_integrand = FALSE, \(xint) {
-        z <- (log(xint) - estimates[['meanlog']]) / estimates[['sdlog']]
+        z <- (trans_xint(xint) - estimates[['meanlog']]) / estimates[['sdlog']]
         score <- raw_scores(z = z, est = estimates)
         hess <- cbind(0.5 * score[, 1]^2 -
                         1 / estimates[['sdlog']]^2,
@@ -107,7 +113,7 @@ mhd_lognorm <- function (x, design, initial,
                       0.5 * score[, 2]^2 +
                         (1 - 3 * z^2) / estimates[['sdlog']]^2)
 
-        f_theta <- dlnorm(xint, meanlog = estimates[['meanlog']], sdlog = estimates[['sdlog']])
+        f_theta <- dfun(xint, parameters = estimates, log = FALSE)
         sqrt(f_theta) * hess
       })
 
