@@ -103,7 +103,6 @@ survey_mhde <- function (x, design,
          initial        = initial,
          nobs           = nobs,
          neff_kish      = nobs_eff,
-         dfun           = model_dfun,
          optimizer_code = mhd_est$convergence,
          optimizer_msg  = mhd_est$message),
     class = 'survey_mde')
