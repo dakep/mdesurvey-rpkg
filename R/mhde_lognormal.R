@@ -24,7 +24,7 @@ mhd_lognorm <- function (x, design, initial,
                          integration_subdivisions = 256, bw,
                          optim_method = "Nelder-Mead", optim_control = list()) {
   x <- enquo(x)
-  svy <- .extract_survey_values(x, design, na.rm = na.rm)
+  svy <- .extract_survey_values(!!x, design, na.rm = na.rm)
   wgts <- svy$wgts
 
   if (dim(svy$x)[[2]] > 1L) {
