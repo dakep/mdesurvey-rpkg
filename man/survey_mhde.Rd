@@ -17,6 +17,7 @@ survey_mhde(
   cov_fun,
   integration_subdivisions = 256,
   bw,
+  kernel = c("epanechnikov", "triangular", "rectangular", "biweight"),
   optim_method = "Nelder-Mead",
   optim_control = list()
 )
@@ -54,6 +55,8 @@ any given function times the KDE over the domain (see Details below).}
 for Gauss-Kronrod quadrature.}
 
 \item{bw}{bandwidth for the HT-adjusted KDE. Uses \code{\link[stats:bandwidth]{stats::bw.nrd()}} as default.}
+
+\item{kernel}{Name of the kernel used in the HT-adjusted KDE.}
 
 \item{optim_method, optim_control}{method and control options passed on to \code{\link[stats:optim]{stats::optim()}}.}
 }

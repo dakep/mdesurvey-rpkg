@@ -18,6 +18,7 @@
 mhd_weibull <- function (x, design, initial, na.rm = FALSE,
                          sandwich_cov = TRUE,
                          integration_subdivisions = 256, bw,
+                         kernel = c("epanechnikov", "triangular", "rectangular", "biweight"),
                          optim_method = "Nelder-Mead", optim_control = list()) {
   x <- enquo(x)
   svy <- .extract_survey_values(!!x, design, na.rm = na.rm)

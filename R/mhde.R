@@ -37,6 +37,7 @@
 #' @param integration_subdivisions number of partitions to divide the domain of \eqn{\hat f()}
 #'   for Gauss-Kronrod quadrature.
 #' @param bw bandwidth for the HT-adjusted KDE. Uses [stats::bw.nrd()] as default.
+#' @param kernel Name of the kernel used in the HT-adjusted KDE.
 #'
 #' @param optim_method,optim_control method and control options passed on to [stats::optim()].
 #' @importFrom stats uniroot optim bw.nrd
@@ -53,6 +54,7 @@ survey_mhde <- function (x, design,
                          cov_fun,
                          integration_subdivisions = 256,
                          bw,
+                         kernel = c("epanechnikov", "triangular", "rectangular", "biweight"),
                          optim_method = "Nelder-Mead", optim_control = list()) {
   x <- enquo(x)
   svy <- .extract_survey_values(!!x, design)
@@ -65,6 +67,8 @@ survey_mhde <- function (x, design,
   nobs <- length(svy$x)
   nobs_eff <- sum(wgts)^2 / sum(wgts^2)
 
+  kernel <- match.arg(kernel)
+
   param_names <- names(initial)
 
   if (missing(bw) || is.null(bw)) {
@@ -74,6 +78,7 @@ survey_mhde <- function (x, design,
   mhde_integral <- hd_gauss_quadrature(svy$x, wgts,
                                        bandwidth = bw,
                                        range = model_domain,
+                                       kernel = kernel,
                                        n_subdivisions = integration_subdivisions)
 
   mhd_est <- optim(parameter_transform(initial), \(params) {

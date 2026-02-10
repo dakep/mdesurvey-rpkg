@@ -21,6 +21,7 @@ mhd_lognorm <- function (x, design, initial,
                          sandwich_cov = TRUE,
                          na.rm = FALSE,
                          integration_subdivisions = 256, bw,
+                         kernel = c("epanechnikov", "triangular", "rectangular", "biweight"),
                          optim_method = "Nelder-Mead", optim_control = list()) {
   x <- enquo(x)
   svy <- .extract_survey_values(!!x, design, na.rm = na.rm)

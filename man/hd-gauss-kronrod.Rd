@@ -10,8 +10,9 @@ hd_gauss_quadrature(
   wgts,
   bandwidth,
   n_subdivisions = 256,
+  poly_order = 20,
   range,
-  kernel = epanechnikov_kernel
+  kernel
 )
 
 partition_domain(x, bw, subdivisions, range)
