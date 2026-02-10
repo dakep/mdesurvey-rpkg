@@ -1,6 +1,6 @@
-#' Minimum Hellinger Distance Estimator for the Lognormal Model
+#' Minimum Hellinger Distance Estimator for the Normal Model
 #'
-#' Compute the MHDE for the parameters \eqn{\mu,\sigma} of the Lognormal model.
+#' Compute the MHDE for the parameters \eqn{\mu,\sigma} of the Normal model.
 #'
 #' @inheritParams survey_mhde
 #' @param initial an initial estimate for the shape and scale parameters. If missing,
@@ -11,17 +11,15 @@
 #'   The only reason for setting this to `FALSE` is to increase computation speed when the
 #'   covariance matrix is not needed.
 #'   Otherwise, use [vcov()] to get the desired estimator of the covariance matrix.
-#' @importFrom stats dlnorm
+#' @importFrom stats dnorm
 #' @importFrom rlang warn enquo
 #' @family Minimum Hellinger Distance Estimator
-#' @seealso [stats::dlnorm()] for the parametrization by `meanlog` \eqn{\mu} and
-#'   `sdlog` \eqn{\sigma}.
 #' @export
-mhd_lognorm <- function (x, design, initial,
-                         sandwich_cov = TRUE,
-                         na.rm = FALSE,
-                         integration_subdivisions = 256, bw,
-                         optim_method = "Nelder-Mead", optim_control = list()) {
+mhd_norm <- function (x, design, initial,
+                      sandwich_cov = TRUE,
+                      na.rm = FALSE,
+                      integration_subdivisions = 256, bw,
+                      optim_method = "Nelder-Mead", optim_control = list()) {
   x <- enquo(x)
   svy <- .extract_survey_values(!!x, design, na.rm = na.rm)
   wgts <- svy$wgts
@@ -33,30 +31,29 @@ mhd_lognorm <- function (x, design, initial,
   nobs <- length(svy$x)
 
   if (missing(initial)) {
-    logx <- log(svy$x[svy$x > 0])
-    initial <- c(meanlog = svymean(logx, design = design),
-                 sdlog   = sqrt(svyvar(logx, design = design)))
+    initial <- c(mean = svymean(svy$x, design = design),
+                 sd   = sqrt(svyvar(svy$x, design = design)))
   }
 
   if (!is.null(names(initial))) {
-    initial <- initial[c("meanlog", "sdlog")]
+    initial <- initial[c("mean", "sd")]
   } else {
-    names(initial) <- c("meanlog", "sdlog")
+    names(initial) <- c("mean", "sd")
   }
 
   raw_scores <- function (x, est, z) {
     if (missing(z)) {
-      z <- (log(x) - est[['meanlog']]) / est[['sdlog']]
+      z <- (x - est[['mean']]) / est[['sd']]
     }
-    cbind(z / est[['sdlog']],
-          ((z^2 - 1) / est[['sdlog']]))
+    cbind(z / est[['sd']],
+          ((z^2 - 1) / est[['sd']]))
   }
 
   fisher_inf <- function (estimates) {
-    matrix(c(1 / estimates[['sdlog']]^2,
+    matrix(c(1 / estimates[['sd']]^2,
              0,
              0,
-             2 / estimates[['sdlog']]^2),
+             2 / estimates[['sd']]^2),
            ncol = 2)
   }
 
@@ -79,16 +76,16 @@ mhd_lognorm <- function (x, design, initial,
     function (estimates, mhde_integral) {
       # Sandwich estimator of the covariance matrix
       A_est_els <- mhde_integral(log = FALSE, non_negative_integrand = FALSE, \(xint) {
-        z <- (log(xint) - estimates[['meanlog']]) / estimates[['sdlog']]
+        z <- (xint - estimates[['mean']]) / estimates[['sd']]
         score <- raw_scores(z = z, est = estimates)
         hess <- cbind(0.5 * score[, 1]^2 -
-                        1 / estimates[['sdlog']]^2,
+                        1 / estimates[['sd']]^2,
                       0.5 * score[, 1] * score[, 2] -
-                        2 * z / estimates[['sdlog']]^2,
+                        2 * z / estimates[['sd']]^2,
                       0.5 * score[, 2]^2 +
-                        (1 - 3 * z^2) / estimates[['sdlog']]^2)
+                        (1 - 3 * z^2) / estimates[['sd']]^2)
 
-        f_theta <- dlnorm(xint, meanlog = estimates[[1]], sdlog = estimates[[2]], log = FALSE)
+        f_theta <- dnorm(xint, mean = estimates[[1]], sd = estimates[[2]], log = FALSE)
         sqrt(f_theta) * hess
       })
 
@@ -113,11 +110,11 @@ mhd_lognorm <- function (x, design, initial,
 
   obj <- survey_mhde(svy$x, design,
                      initial,
-                     model_dfun = \(x, parameters, log) {
-                       dlnorm(x, meanlog = parameters[[1]], sdlog = parameters[[2]], log = log)
+                     model_dfun = \ (x, parameters, log) {
+                       dnorm(x, mean = parameters[[1]], sd = parameters[[2]], log = log)
                      },
                      cov_fun                  = covfun,
-                     model_domain             = c(0, Inf),
+                     model_domain             = c(-Inf, Inf),
                      parameter_transform      = \(x) { c(x[[1]], log(x[[2]])) },
                      parameter_transform_inv  = \(x) { c(x[[1]], exp(x[[2]])) },
                      integration_subdivisions = integration_subdivisions,
@@ -129,14 +126,14 @@ mhd_lognorm <- function (x, design, initial,
   obj$neff_scores <- attr(obj$cov, "neff")
   names(obj$neff_scores) <- names(obj$estimates)
   attr(obj$cov, "neff") <- NULL
-  class(obj) <- c("survey_mde_lognorm", class(obj))
+  class(obj) <- c("survey_mde_norm", class(obj))
 
   obj
 }
 
 #' @rdname vcov
 #' @export
-vcov.survey_mde_lognorm <- function (object, type = c("sandwich", "model"),
+vcov.survey_mde_norm <- function (object, type = c("sandwich", "model"),
                                    n = c("score", "kish"), ...) {
   type_missing <- missing(type)
   if (!is.numeric(n)) {

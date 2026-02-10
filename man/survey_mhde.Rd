@@ -75,6 +75,7 @@ of times in each subdivision, and does not need to be re-evaluated for different
 Other Minimum Hellinger Distance Estimator: 
 \code{\link{mhd_gamma}()},
 \code{\link{mhd_lognorm}()},
+\code{\link{mhd_norm}()},
 \code{\link{mhd_weibull}()}
 }
 \concept{Minimum Hellinger Distance Estimator}

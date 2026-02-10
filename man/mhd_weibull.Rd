@@ -49,6 +49,7 @@ Compute the MHDE for the shape \eqn{k} and scale \eqn{\lambda} of the Weibull mo
 Other Minimum Hellinger Distance Estimator: 
 \code{\link{mhd_gamma}()},
 \code{\link{mhd_lognorm}()},
+\code{\link{mhd_norm}()},
 \code{\link{survey_mhde}()}
 }
 \concept{Minimum Hellinger Distance Estimator}

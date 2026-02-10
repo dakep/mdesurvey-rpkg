@@ -50,6 +50,7 @@ Compute the MHDE for the shape \eqn{\alpha} and scale \eqn{\theta} of the Gamma 
 
 Other Minimum Hellinger Distance Estimator: 
 \code{\link{mhd_lognorm}()},
+\code{\link{mhd_norm}()},
 \code{\link{mhd_weibull}()},
 \code{\link{survey_mhde}()}
 }
