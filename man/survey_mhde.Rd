@@ -8,13 +8,9 @@ Survey Designs}
 survey_mhde(
   x,
   design,
+  family,
   initial,
   na.rm = FALSE,
-  model_dfun,
-  model_domain,
-  parameter_transform,
-  parameter_transform_inv,
-  cov_fun,
   integration_subdivisions = 256,
   bw,
   kernel = c("epanechnikov", "triangular", "rectangular", "biweight"),
@@ -28,28 +24,14 @@ The objects are first looked up in the provided \code{design}, then in the calli
 
 \item{design}{the survey design created by \code{\link[survey:svydesign]{survey::svydesign()}} and friends.}
 
+\item{family}{either the name of a known model family, or a
+model family as returned by \code{\link[=model_family]{model_family()}}.}
+
 \item{initial}{an initial estimate for the parameters.
 If the vector has names, those will be used for the returned estimates.}
 
 \item{na.rm}{a logical evaluating to \code{TRUE} or \code{FALSE} indicating whether \code{NA} values
 should be omitted.}
-
-\item{model_dfun}{the model density function with signature \code{function(x, parameters, log) {...}},
-where \code{x} are the evaluation points, \code{parameters} are the parameter values and \code{log} is
-a logical value if the density should be evaluated on the log scale or not.}
-
-\item{model_domain}{a matrix with 2 columns giving the lower and upper endpoints of the domain
-for each dimension. Can be infinite.}
-
-\item{parameter_transform, parameter_transform_inv}{transformation function and its inverse
-to transform the parameters to the entire real space for easier optimization.
-These functions must take one argument (the parameters/transformed parameters) and return
-the parameters on the transformed/the original scale.}
-
-\item{cov_fun}{function to compute the covariance matrix for the estimator.
-The signature of the function must be \verb{function(estimates, integration)}, where
-\code{estimates} are the estimated parameters and \code{integration} is a function that integrates
-any given function times the KDE over the domain (see Details below).}
 
 \item{integration_subdivisions}{number of partitions to divide the domain of \eqn{\hat f()}
 for Gauss-Kronrod quadrature.}
@@ -61,24 +43,6 @@ for Gauss-Kronrod quadrature.}
 \item{optim_method, optim_control}{method and control options passed on to \code{\link[stats:optim]{stats::optim()}}.}
 }
 \description{
-Compute the survey MHDE for the parameters of a user-specified continuous model.
-}
-\section{Integration function}{
-The second argument to the \code{cov_fun} parameter is a function with signature
-\verb{function(g, log = FALSE, non_negative_integrand = TRUE)} that computes
-\deqn{\int \sqrt{ \hat f(x) g(x) }\;\mathrm{d}x,}
-or (if \code{log=TRUE})
-\deqn{\int \exp\{\frac{1}{2} (\log(\hat f(x)) + \log(g(x)) )\}\;\mathrm{d}x,}
-for arbitrary functions \eqn{g()}.
-The \code{integration} function is set up such that \eqn{\hat f} is evaluated a fixed number
-of times in each subdivision, and does not need to be re-evaluated for different \eqn{g()}.
-}
-
-\seealso{
-Other Minimum Hellinger Distance Estimator: 
-\code{\link{mhd_gamma}()},
-\code{\link{mhd_lognorm}()},
-\code{\link{mhd_norm}()},
-\code{\link{mhd_weibull}()}
+Compute the survey MHDE for the parameters in a given model family.
 }
 \concept{Minimum Hellinger Distance Estimator}

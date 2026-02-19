@@ -1,16 +1,5 @@
 #' Calculate Variance-Covariance Matrix for Minimum Divergence Estimators
 #'
-#' @param object a MDE fitted to survey data.
-#' @param type which type of covariance matrix to compute.
-#' @param n either how to estimate the effective sample size, or (if numeric) the
-#'   sample size.
-#' @param ... currently unused.
-#' @name vcov
-NULL
-
-
-#' Calculate Variance-Covariance Matrix for Minimum Divergence Estimators
-#'
 #' @param object a MDE fitted to survey data
 #' @param type which type of covariance matrix to compute.
 #' @param n either how to estimate the effective sample size, or (if numeric) the
@@ -36,12 +25,13 @@ NULL
   if (missing(n) || is.null(n) || !is.numeric(n)) {
     n <- object$neff_kish
   }
+  finf <- object$family$fisher_inf(coef(object))
   if (length(n) == 1L) {
-    solve(object$fisher_inf) / n
-  } else if (length(n) == nrow(object$fisher_inf)) {
-    solve(object$fisher_inf) / outer(sqrt(n), sqrt(n))
+    solve(finf) / n
+  } else if (length(n) == nrow(finf)) {
+    solve(finf) / outer(sqrt(n), sqrt(n))
   } else {
     abort(sprintf("`n` must be either of length 1 or %d (= the number of parameters)",
-                  nrow(object$fisher_inf)))
+                  nrow(finf)))
   }
 }

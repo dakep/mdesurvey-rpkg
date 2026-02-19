@@ -18,7 +18,11 @@ Imports:
   Rcpp,
   rlang,
   survey,
-  SparseGrid
+  SparseGrid,
+  R6,
+  stringr
+Suggests:
+  testthat
 LinkingTo:
   Rcpp,
   RcppArmadillo (>= 0.9.600)
@@ -27,4 +31,19 @@ NeedsCompilation: yes
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.3
+Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
+Collate: 
+    'model_family.R'
+    'family-gamma.R'
+    'family-normal.R'
+    'family-weibull.R'
+    'generics.R'
+    'kde.R'
+    'mdesurvey_pkg.R'
+    'mhde.R'
+    'minimum-phi-div-estimator.R'
+    'partition-univariate.R'
+    'phi-divergence.R'
+    'survey-helper.R'
+    'vcov-internal.R'
