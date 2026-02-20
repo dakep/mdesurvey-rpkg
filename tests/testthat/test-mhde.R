@@ -81,3 +81,71 @@ test_that("Normal MHDE", {
                       dimnames = list(c("mean", "sd"), c("mean", "sd"))),
                tolerance = 1e-3)
 })
+
+test_that("MHDE vs MPDE-HD in Gamma models", {
+  TRUE_SHAPE <- 2
+  TRUE_SCALE <- 35000
+  N <- 1e6
+  n <- 1e3
+
+  set.seed(1)
+  finite_pop <- simulate_finitepop(size = N, cor = 0.8,
+                                   ranf = \(n) rgamma(n, shape = TRUE_SHAPE, scale = TRUE_SCALE))
+
+  finite_pop$incl_prob <- n * finite_pop$z / sum(finite_pop$z)
+
+  set.seed(1)
+  sample <- which(runif(N) <= finite_pop$incl_prob)
+
+  des <- svydesign(id = ~ 1,
+                   variables = ~ y,
+                   probs = finite_pop$incl_prob[sample],
+                   data = data.frame(y = finite_pop$y[sample]),
+                   pps = HR(sum(finite_pop$incl_prob^2)))
+
+  mhde <- survey_mhde(~ y,
+                      design = des,
+                      family = 'gamma')
+  mpde <- survey_mpde(~ y,
+                      design = des,
+                      divergence = 'hd',
+                      family = 'gamma')
+
+  expect_equal(coef(mhde), coef(mpde), tolerance = 1e-3)
+  expect_equal(vcov(mhde, "sandwich"), vcov(mpde, "sandwich"), tolerance = 1e-3)
+  expect_equal(vcov(mhde, "model"), vcov(mpde, "model"), tolerance = 1e-3)
+})
+
+test_that("MHDE vs MPDE-HD in Normal models", {
+  TRUE_MEAN <- 2
+  TRUE_SD <- 1.4
+  N <- 1e6
+  n <- 1e3
+
+  set.seed(1)
+  finite_pop <- simulate_finitepop(size = N, cor = 0.8,
+                                   ranf = \(n) rnorm(n, mean = TRUE_MEAN, sd = TRUE_SD))
+
+  finite_pop$incl_prob <- n * finite_pop$z / sum(finite_pop$z)
+
+  set.seed(1)
+  sample <- which(runif(N) <= finite_pop$incl_prob)
+
+  des <- svydesign(id = ~ 1,
+                   variables = ~ y,
+                   probs = finite_pop$incl_prob[sample],
+                   data = data.frame(y = finite_pop$y[sample]),
+                   pps = HR(sum(finite_pop$incl_prob^2)))
+
+  mhde <- survey_mhde(~ y,
+                      design = des,
+                      family = 'normal')
+  mpde <- survey_mpde(~ y,
+                      design = des,
+                      divergence = 'hd',
+                      family = 'normal')
+
+  expect_equal(coef(mhde), coef(mpde), tolerance = 1e-3)
+  expect_equal(vcov(mhde, "sandwich"), vcov(mpde, "sandwich"), tolerance = 1e-3)
+  expect_equal(vcov(mhde, "model"), vcov(mpde, "model"), tolerance = 1e-3)
+})

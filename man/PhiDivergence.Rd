@@ -46,7 +46,7 @@ and satisfy \eqn{\phi(1) = 1}, \eqn{\lim_{t \to 0^+} \phi(t) = \phi(0)}.}
 
 \item{\code{w1}}{function to evaluate \eqn{\phi(x) - x \phi'(x)}}
 
-\item{\code{w2}}{function to evaluate \eqn{x^2 \phi''(x)}}
+\item{\code{w2}}{function to evaluate \eqn{\phi(x) - x \phi'(x) + x^2 \phi''(x)}}
 }
 \if{html}{\out{</div>}}
 }

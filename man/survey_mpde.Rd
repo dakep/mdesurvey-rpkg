@@ -45,8 +45,6 @@ for Gauss-Kronrod quadrature.}
 \item{kernel}{Name of the kernel used in the HT-adjusted KDE.}
 
 \item{optim_method, optim_control}{method and control options passed on to \code{\link[stats:optim]{stats::optim()}}.}
-
-\item{phi}{either the name of a built-in divergence measure or a convex function.}
 }
 \description{
 Compute the survey MPDE for the parameters of a user-specified continuous model.

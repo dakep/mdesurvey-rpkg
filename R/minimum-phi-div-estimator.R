@@ -12,7 +12,6 @@
 #'   model family as returned by [model_family()].
 #' @param divergence either the name of a known phi divergence, or a
 #'   phi divergence as returned by [phi_divergence()].
-#' @param phi either the name of a built-in divergence measure or a convex function.
 #' @param na.rm a logical evaluating to `TRUE` or `FALSE` indicating whether `NA` values
 #'   should be omitted.
 #' @param integration_subdivisions number of partitions to divide the domain of \eqn{\hat f()}
@@ -214,25 +213,6 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
                               kernel  = kernel))
 
   list(
-    # divergence_int = \(dfun, pfun) {
-    #   f_theta <- dfun(gkpts[, "int_x"])
-    #   if (is.null(dim(f_theta))) {
-    #     f_theta <- matrix(f_theta, ncol = 1)
-    #   }
-    #
-    #   integrand <- phifun(gkpts[, "f_hat"] / f_theta) * f_theta
-    #   integrand[f_theta < .Machine$double.eps] <- 0
-    #   int_val <- crossprod(gkpts[, "int_wgt"], integrand) |>
-    #     drop()
-    #
-    #   gap_contrib <- vapply(seq_len(ncol(gaps)), FUN.VALUE = numeric(1), FUN = \(i) {
-    #     gap_const * diff(pfun(gaps[, i]))
-    #   }) |>
-    #     sum()
-    #
-    #   int_val + gap_contrib
-    # },
-
     divergence_int = \(params) {
       params[] <- family$inv_trans(params)
       f_theta <- family$dfun(gkpts[, "int_x"], params = params, log = FALSE)
@@ -253,7 +233,7 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
       cov_entries <- matrix(rep(seq_along(params), each = 2L), nrow = 2L) |>
         cbind(combn(length(params), 2L))
 
-      # First we'll evaluate the integral over the regions where both
+      # First evaluate the integral over the regions where both
       # the KDE and the model density are positive.
       scores <- family$raw_scores(gkpts[, "int_x"], params = params)
       hessian <- family$hessian(gkpts[, "int_x"], params = params)
@@ -271,7 +251,7 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
       A_int_pos_kde <- crossprod(gkpts[, "int_wgt"], A_int_pos_kde) |>
         drop()
 
-      # Then we'll evaluate the integral over the regions where the KDE is zero
+      # Then evaluate the integral over the regions where the KDE is zero
       # but the model density is positive.
       w10 <- divergence$w1(0)
       w20 <- divergence$w2(0)
@@ -290,6 +270,7 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
                             f_theta <- family$dfun(xint, params = params, log = FALSE)
                             f_theta * (w10 * hessian +  w20 * scores[, ij[[1]]] * scores[, ij[[2]]])
                           },
+                          stop.on.error = FALSE,
                           rel.tol = rel_tol)$value
               } else if (isTRUE(abs(w10) > 0)) {
                 integrate(lower = gaps[[1, gapi]],
@@ -311,7 +292,8 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
                             f_theta <- family$dfun(xint, params = params, log = FALSE)
                             f_theta * w20 * scores[, ij[[1]]] * scores[, ij[[2]]]
                           },
-                          abs.tol = rel_tol)$value
+                          stop.on.error = FALSE,
+                          rel.tol = rel_tol)$value
               } else {
                 0
               }

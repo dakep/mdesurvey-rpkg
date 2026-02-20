@@ -54,7 +54,7 @@ alpha_divergence <- function (alpha) {
   PhiDivergence$new(name = sprintf("alpha divergence (alpha=%f)", alpha),
                     phi  = \(x) (x^alpha - alpha * x - (1 - alpha)) / (alpha * (alpha - 1)),
                     w1   = \(x) (1 - x^alpha) / alpha,
-                    w2   = \(x) x^alpha)
+                    w2   = \(x) (1 - x^alpha) / alpha + x^alpha)
 }
 
 #' @description
@@ -77,7 +77,7 @@ power_divergence <- function (lambda) {
   PhiDivergence$new(name = sprintf("power divergence (lambda=%f)", lambda),
                     phi  = \(x) (x^(lambda + 1) - 1) / (lambda * (lambda + 1)),
                     w1   = \(x) -(1 + lambda * x^(lambda + 1)) / (lambda * (lambda + 1)),
-                    w2   = \(x) x^(lambda + 1))
+                    w2   = \(x) (lambda^2 * x^(lambda + 1) - 1) / (lambda * (lambda + 1)))
 }
 
 #' @title PhiDivergence Class
@@ -107,7 +107,7 @@ PhiDivergence <- R6Class(
     #'   The generator must be convex function \eqn{\phi\colon [0, \infty) \to (-\infty, \infty]}
     #'   and satisfy \eqn{\phi(1) = 1}, \eqn{\lim_{t \to 0^+} \phi(t) = \phi(0)}.
     #' @param w1 function to evaluate \eqn{\phi(x) - x \phi'(x)}
-    #' @param w2 function to evaluate \eqn{x^2 \phi''(x)}
+    #' @param w2 function to evaluate \eqn{\phi(x) - x \phi'(x) + x^2 \phi''(x)}
     #' @importFrom stringr str_to_lower
     initialize = \(name, phi, w1, w2) {
       self$name <- name
@@ -136,23 +136,16 @@ PhiDivergence <- R6Class(
   .phi_divergence_register$hd <-
   .phi_divergence_register$hellingerdistance <- PhiDivergence$new(
     name        = "Hellinger",
-    phi         = \(x) (sqrt(x) - 1)^2,
-    w1          = \(x) (1 - sqrt(x)),
-    w2          = \(x) 0.25 * sqrt(x))
-    # phi         = \(x) 1 - sqrt(x),
-    # w1          = \(x) 1 - 0.5 * sqrt(x),
-    # w2          = \(x) 0.25 * sqrt(x))
-    # f_deriv     = \(x) -0.5 / sqrt(x),
-    # f_deriv_2nd = \(x) 0.25 * x^-1.5,
+    phi         = \(x) 1 - sqrt(x),
+    w1          = \(x) -0.5 * sqrt(x),  # + 1 for w1 AND w2 does not change the integral (Bartlett)
+    w2          = \(x) -0.25 * sqrt(x)) # + 1 for w1 AND w2 does not change the integral (Bartlett)
 
 .phi_divergence_register$negativeexponential <-
   .phi_divergence_register$ned <- PhiDivergence$new(
   name        = "NegativeExponential",
   phi         = \(x) expm1(1 - x),
-  w1          = \(x) expm1(1 - x) + x * exp(1 - x),
-  w2          = \(x) x^2 * exp(1 - x))
-  # f_deriv     = \(x) -exp(1 - x),
-  # f_deriv_2nd = \(x) exp(1 - x),
+  w1          = \(x) (x + 1)       * exp(1 - x), # - 1 for w1 AND w2 does not change the integral (Bartlett)
+  w2          = \(x) (1 + x + x^2) * exp(1 - x))
 
 .phi_divergence_register$kl <-
   .phi_divergence_register$kullbackleibler <- PhiDivergence$new(
@@ -164,9 +157,7 @@ PhiDivergence <- R6Class(
       x
     },
     w1          = \(x) -x,
-    w2          = \(x) x)
-    # f_deriv     = \(x) 1 + log(x),
-    # f_deriv_2nd = \(x) 1 / x,
+    w2          = \(x) 0)
 
 .phi_divergence_register$reversekl <-
   .phi_divergence_register$revkl <-
@@ -174,8 +165,6 @@ PhiDivergence <- R6Class(
     name        = "Reverse-KL",
     phi         = \(x) -log(x),
     w1          = \(x) 1 - log(x),
-    w2          = \(x) 1)
-    # f_deriv     = \(x) -1/x,
-    # f_deriv_2nd = \(x) 1/x^2,
+    w2          = \(x) 2 - log(x))
 
 lockEnvironment(.phi_divergence_register, bindings = TRUE)

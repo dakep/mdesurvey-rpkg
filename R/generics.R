@@ -16,7 +16,7 @@ coef.survey_mde <- function (object, ...) {
 #' @param ... currently unused.
 #' @name vcov
 #' @export
-vcov.survey_mhde <- function (object, type = c("sandwich", "model"),
+vcov.survey_mde <- function (object, type = c("sandwich", "model"),
                               n = c("score", "kish"), ...) {
   type_missing <- missing(type)
   if (!is.numeric(n)) {

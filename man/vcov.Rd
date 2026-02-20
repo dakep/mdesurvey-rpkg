@@ -2,10 +2,10 @@
 % Please edit documentation in R/generics.R
 \name{vcov}
 \alias{vcov}
-\alias{vcov.survey_mhde}
+\alias{vcov.survey_mde}
 \title{Calculate Variance-Covariance Matrix for Minimum Divergence Estimators}
 \usage{
-\method{vcov}{survey_mhde}(object, type = c("sandwich", "model"), n = c("score", "kish"), ...)
+\method{vcov}{survey_mde}(object, type = c("sandwich", "model"), n = c("score", "kish"), ...)
 }
 \arguments{
 \item{object}{a MDE fitted to survey data.}
