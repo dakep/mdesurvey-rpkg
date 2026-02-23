@@ -16,6 +16,8 @@ A class to encapsulate different phi divergences.
 \item{\code{w1}}{function to evaluate \eqn{\phi(x) - x \phi'(x)}}
 
 \item{\code{w2}}{function to evaluate \eqn{x^2 \phi''(x)}}
+
+\item{\code{phi_2nd_deriv_at_1}}{value of \eqn{\phi''(1)}}
 }
 \if{html}{\out{</div>}}
 }

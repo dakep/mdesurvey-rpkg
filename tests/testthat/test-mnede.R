@@ -31,7 +31,7 @@ test_that("Gamma MNEDE", {
 
   expect_equal(coef(res), c(shape = 1.733, scale = 40780), tolerance = 1e-3)
   expect_equal(vcov(res, "sandwich"),
-               matrix(c(0.002710689, -59.32208, -59.32208, 1366488.34131), ncol = 2,
+               matrix(c(0.04337103, -949.1532, -949.1532, 21863813.4609), ncol = 2,
                       dimnames = list(c("shape", "scale"), c("shape", "scale"))) |>
                  structure(type = "sandwich"),
                tolerance = 1e-3)
@@ -65,7 +65,7 @@ test_that("Normal MNEDE", {
 
   expect_equal(coef(res), c(mean = 2.117, sd = 1.3), tolerance = 1e-3)
   expect_equal(vcov(res, "sandwich"),
-               matrix(c(0.0003094745, -0.0001026203, -0.0001026203, 0.0001186341), ncol = 2,
+               matrix(c(0.004951591, -0.001641925, -0.001641925, 0.001898146), ncol = 2,
                       dimnames = list(c("mean", "sd"), c("mean", "sd"))) |>
                  structure(type = "sandwich"),
                tolerance = 1e-3)
@@ -99,7 +99,7 @@ test_that("Normal MHDE vs MPDE", {
 
   mpde <- survey_mpde(~ y,
                       design = des,
-                      divergence = power_divergence(-0.49),
+                      divergence = power_divergence(-0.5001),
                       family = 'normal')
 
   expect_equal(coef(mhde), coef(mpde), tolerance = 1e-3)

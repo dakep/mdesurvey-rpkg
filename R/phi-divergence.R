@@ -46,15 +46,16 @@ alpha_divergence <- function (alpha) {
   if (abs(alpha - 1) < .Machine$double.eps) {
     return(phi_divergence("KL"))
   } else if (abs(alpha) < .Machine$double.eps) {
-    return(phi_divergence("Reverse-KL"))
+    return(phi_divergence("ReverseKL"))
   } else if (abs(alpha - 0.5) < .Machine$double.eps) {
     return(phi_divergence("Hellinger"))
   }
 
+  # Drop the constant 1 / alpha from w1 and w2 for numerical stability
   PhiDivergence$new(name = sprintf("alpha divergence (alpha=%f)", alpha),
                     phi  = \(x) (x^alpha - alpha * x - (1 - alpha)) / (alpha * (alpha - 1)),
-                    w1   = \(x) (1 - x^alpha) / alpha,
-                    w2   = \(x) (1 - x^alpha) / alpha + x^alpha)
+                    w1   = \(x) -x^alpha / alpha,
+                    w2   = \(x) x^alpha * (alpha - 1) / alpha)
 }
 
 #' @description
@@ -74,10 +75,12 @@ power_divergence <- function (lambda) {
     return(phi_divergence("Hellinger"))
   }
 
+  # Drop the constant 1 / (lambda * (lambda + 1)) from w1 and w2
+  # for numerical stability
   PhiDivergence$new(name = sprintf("power divergence (lambda=%f)", lambda),
                     phi  = \(x) (x^(lambda + 1) - 1) / (lambda * (lambda + 1)),
-                    w1   = \(x) -(1 + lambda * x^(lambda + 1)) / (lambda * (lambda + 1)),
-                    w2   = \(x) (lambda^2 * x^(lambda + 1) - 1) / (lambda * (lambda + 1)))
+                    w1   = \(x) -lambda * x^(lambda + 1) / (lambda * (lambda + 1)),
+                    w2   = \(x) lambda^2 * x^(lambda + 1) / (lambda * (lambda + 1)))
 }
 
 #' @title PhiDivergence Class
@@ -98,6 +101,9 @@ PhiDivergence <- R6Class(
 
     #' @field w2 function to evaluate \eqn{x^2 \phi''(x)}
     w2 = NULL,
+
+    #' @field phi_2nd_deriv_at_1 value of \eqn{\phi''(1)}
+    phi_2nd_deriv_at_1 = NULL,
 
     #' @description
     #' Define a new phi divergence.
@@ -125,8 +131,15 @@ PhiDivergence <- R6Class(
         abort(parent = cnd,
               message = 'Cannot evaluate the phi function at 0.')
       })
+
       if (!isTRUE(abs(self$phi(1)) < .Machine$double.eps)) {
         abort("phi(1) must be exactly 0")
+      }
+
+      self$phi_2nd_deriv_at_1 <- self$w2(1) - self$w1(1)
+
+      if (!is.finite(self$phi_2nd_deriv_at_1)) {
+        abort("Cannot evaluate phi''(1)")
       }
     }
   )

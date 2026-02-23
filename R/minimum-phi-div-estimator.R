@@ -90,7 +90,7 @@ survey_mpde <- function (x, design,
 
   estimates <- family$inv_trans(mpd_est$par)
   names(estimates) <- family$parameter_names
-  covest <- mpde_covest(svy$x, estimates, mpde_integral, family, design)
+  covest <- mpde_covest(svy$x, estimates, mpde_integral, family, design, divergence)
 
   structure(
     list(estimates      = estimates,
@@ -110,7 +110,7 @@ survey_mpde <- function (x, design,
 #' @importFrom survey svymean
 #' @importFrom stats vcov
 #' @importFrom rlang warn
-mpde_covest <- function (x, estimates, integrator, family, design) {
+mpde_covest <- function (x, estimates, integrator, family, design, divergence) {
   A_est <- integrator$sandwich_cov_A(estimates)
   score <- family$raw_scores(x, estimates)
   design$variables <- data.frame(score = score)
@@ -120,7 +120,7 @@ mpde_covest <- function (x, estimates, integrator, family, design) {
   neff <- diag(finf) / diag(design_vcov)
 
   covest <- tryCatch({
-    (solve(A_est, design_vcov) %*% solve(A_est) / 16) |>
+    (solve(A_est, design_vcov) %*% solve(A_est) * divergence$phi_2nd_deriv_at_1^2) |>
       structure(type = "sandwich")
   }, error = \(cnd) {
     # Compute the model-based estimator instead.
