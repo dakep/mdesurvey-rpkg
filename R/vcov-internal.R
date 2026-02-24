@@ -6,7 +6,7 @@
 #'   sample size.
 #' @param enforce_type should the `type` be enforced, or use the model-based estimate
 #'   as fallback with a warning.
-#' @importFrom stats vcov
+#' @importFrom stats vcov coef
 #' @importFrom rlang abort
 #' @keywords internal
 .vcov <- function (object, type, n, enforce_type = FALSE) {

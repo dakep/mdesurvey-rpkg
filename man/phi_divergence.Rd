@@ -8,9 +8,9 @@
 \usage{
 phi_divergence(name, phi, w1, w2)
 
-alpha_divergence(alpha)
+alpha_divergence(alpha, specialized = TRUE)
 
-power_divergence(lambda)
+power_divergence(lambda, specialized = TRUE)
 }
 \arguments{
 \item{name}{name of the phi divergence.
@@ -20,6 +20,9 @@ If missing, list all currently known divergences.}
 Passed on to initialize a new \link{PhiDivergence}.}
 
 \item{alpha}{value for the \eqn{\alpha} parameter.}
+
+\item{specialized}{whether specialized (named) Phi divergences should be returned for
+certain values of \code{lambda}.}
 
 \item{lambda}{value for the \eqn{\lambda} power parameter.}
 }

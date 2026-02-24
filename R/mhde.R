@@ -22,6 +22,7 @@
 #' @importFrom stats uniroot optim bw.nrd
 #' @importFrom rlang warn abort enquo
 #' @importFrom R6 is.R6
+#' @importFrom methods is
 #' @family Minimum Hellinger Distance Estimator
 #' @export
 survey_mhde <- function (x, design,
@@ -106,7 +107,8 @@ survey_mhde <- function (x, design,
 }
 
 #' @importFrom survey svymean
-#' @importFrom stats vcov
+#' @importFrom stats vcov as.formula
+#' @importFrom utils combn
 #' @importFrom rlang warn
 mhde_covest <- function (x, estimates, int_fun, family, design) {
   # Sandwich estimator of the covariance matrix

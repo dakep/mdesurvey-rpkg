@@ -11,9 +11,6 @@ model_family(name, ...)
 If missing, list all currently known model families.}
 
 \item{...}{passed on to initialize a new \link{ModelFamily}.}
-
-\item{.register}{if defining a new model family, whether to register it in the
-list of known model families.}
 }
 \value{
 an object of type \link{ModelFamily}.

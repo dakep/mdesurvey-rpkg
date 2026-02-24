@@ -2,6 +2,7 @@
 #'
 #' Extract coefficients from a fitted MDE.
 #'
+#' @param object an MDE object fitted to survey data by [survey_mpde()] or [survey_mhde()].
 #' @export
 coef.survey_mde <- function (object, ...) {
   object$estimates
@@ -9,7 +10,7 @@ coef.survey_mde <- function (object, ...) {
 
 #' Calculate Variance-Covariance Matrix for Minimum Divergence Estimators
 #'
-#' @param object a MDE fitted to survey data.
+#' @param object an MDE object fitted to survey data by [survey_mpde()] or [survey_mhde()].
 #' @param type which type of covariance matrix to compute.
 #' @param n either how to estimate the effective sample size, or (if numeric) the
 #'   sample size.

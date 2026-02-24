@@ -22,6 +22,7 @@
 #' @param optim_method,optim_control method and control options passed on to [stats::optim()].
 #' @importFrom stats uniroot optim bw.nrd
 #' @importFrom rlang warn abort enquo
+#' @importFrom methods is
 #' @family Minimum Phi-Divergence Estimator
 #' @export
 survey_mpde <- function (x, design,
@@ -108,7 +109,7 @@ survey_mpde <- function (x, design,
 }
 
 #' @importFrom survey svymean
-#' @importFrom stats vcov
+#' @importFrom stats vcov as.formula
 #' @importFrom rlang warn
 mpde_covest <- function (x, estimates, integrator, family, design, divergence) {
   A_est <- integrator$sandwich_cov_A(estimates)
@@ -166,6 +167,8 @@ mpde_covest <- function (x, estimates, integrator, family, design, divergence) {
 #'
 #' @keywords internal
 #' @importFrom SparseGrid createSparseGrid
+#' @importFrom utils combn
+#' @importFrom stats integrate
 #' @rdname phidiv_gauss_quadrature
 phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, poly_order = 20,
                                      divergence, family, kernel) {

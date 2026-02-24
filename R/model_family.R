@@ -7,8 +7,6 @@
 #' @param name name of the model family.
 #'   If missing, list all currently known model families.
 #' @param ... passed on to initialize a new [ModelFamily].
-#' @param .register if defining a new model family, whether to register it in the
-#'   list of known model families.
 #' @return an object of type [ModelFamily].
 #' @importFrom stringr str_to_lower
 #' @importFrom rlang dots_n abort

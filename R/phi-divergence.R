@@ -19,7 +19,7 @@ phi_divergence <- function (name, phi, w1, w2) {
     if (exists(name, where = .phi_divergence_register) ||
         exists(str_to_lower(name), where = .phi_divergence_register)) {
       if (!missing(phi) || !missing(w1) || !missing(w2)) {
-        abort(sprintf("Divergence with name %s already exists. In this case `phi` must be empty!"))
+        abort(sprintf("Divergence with name %s already exists. In this case `phi`, `w1`, and `w2` must be empty!"))
       }
 
       if (exists(name, where = .phi_divergence_register)) {
@@ -40,15 +40,19 @@ phi_divergence <- function (name, phi, w1, w2) {
 #' \deqn{f(x) = \frac{x^\alpha - \alpha x - (1 - \alpha)}{\alpha (\alpha - 1)}.}
 #'
 #' @param alpha value for the \eqn{\alpha} parameter.
+#' @param specialized whether specialized (named) Phi divergences should be returned for
+#'   certain values of `alpha`.
 #' @export
 #' @rdname phi_divergence
-alpha_divergence <- function (alpha) {
-  if (abs(alpha - 1) < .Machine$double.eps) {
-    return(phi_divergence("KL"))
-  } else if (abs(alpha) < .Machine$double.eps) {
-    return(phi_divergence("ReverseKL"))
-  } else if (abs(alpha - 0.5) < .Machine$double.eps) {
-    return(phi_divergence("Hellinger"))
+alpha_divergence <- function (alpha, specialized = TRUE) {
+  if (isTRUE(specialized)) {
+    if (abs(alpha - 1) < .Machine$double.eps) {
+      return(phi_divergence("KL"))
+    } else if (abs(alpha) < .Machine$double.eps) {
+      return(phi_divergence("ReverseKL"))
+    } else if (abs(alpha - 0.5) < .Machine$double.eps) {
+      return(phi_divergence("Hellinger"))
+    }
   }
 
   # Drop the constant 1 / alpha from w1 and w2 for numerical stability
@@ -64,15 +68,19 @@ alpha_divergence <- function (alpha) {
 #' \deqn{f(x) = \frac{1}{\lambda (\lambda + 1)} (x^{\lambda + 1} - 1).}
 #'
 #' @param lambda value for the \eqn{\lambda} power parameter.
+#' @param specialized whether specialized (named) Phi divergences should be returned for
+#'   certain values of `lambda`.
 #' @export
 #' @rdname phi_divergence
-power_divergence <- function (lambda) {
-  if (abs(lambda + 1) < .Machine$double.eps) {
-    return(phi_divergence("ReverseKL"))
-  } else if (abs(lambda) < .Machine$double.eps) {
-    return(phi_divergence("KL"))
-  } else if (abs(lambda + 0.5) < .Machine$double.eps) {
-    return(phi_divergence("Hellinger"))
+power_divergence <- function (lambda, specialized = TRUE) {
+  if (isTRUE(specialized)) {
+    if (abs(lambda + 1) < .Machine$double.eps) {
+      return(phi_divergence("ReverseKL"))
+    } else if (abs(lambda) < .Machine$double.eps) {
+      return(phi_divergence("KL"))
+    } else if (abs(lambda + 0.5) < .Machine$double.eps) {
+      return(phi_divergence("Hellinger"))
+    }
   }
 
   # Drop the constant 1 / (lambda * (lambda + 1)) from w1 and w2

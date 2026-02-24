@@ -1,5 +1,5 @@
 #' Extract the Numeric Values from a Survey Design
-#' @importFrom stats na.pass weights
+#' @importFrom stats na.pass weights model.frame terms model.matrix
 #' @importFrom rlang enquo eval_tidy
 #' @keywords internal
 .extract_survey_values <- function (x, design, na.rm = FALSE) {

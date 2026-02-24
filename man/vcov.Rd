@@ -8,7 +8,7 @@
 \method{vcov}{survey_mde}(object, type = c("sandwich", "model"), n = c("score", "kish"), ...)
 }
 \arguments{
-\item{object}{a MDE fitted to survey data.}
+\item{object}{an MDE object fitted to survey data by \code{\link[=survey_mpde]{survey_mpde()}} or \code{\link[=survey_mhde]{survey_mhde()}}.}
 
 \item{type}{which type of covariance matrix to compute.}
 
