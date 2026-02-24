@@ -34,6 +34,21 @@ survey_mpde <- function (x, design,
                          bw,
                          kernel = c("epanechnikov", "triangular", "rectangular", "biweight"),
                          optim_method = "Nelder-Mead", optim_control = list()) {
+  if (is.character(divergence)) {
+    divergence <- phi_divergence(divergence)
+  }
+
+  if (!is.R6(divergence) || !is(divergence, "PhiDivergence")) {
+    abort("`divergence` must be a valid phi divergence from phi_divergence()")
+  }
+
+  if (divergence$is("hd")) {
+    cl <- match.call()
+    cl[[1]] <- quote(survey_mhde)
+    cl$divergence <- NULL
+    return(eval.parent(cl))
+  }
+
   x <- enquo(x)
   svy <- .extract_survey_values(!!x, design)
   wgts <- svy$wgts
@@ -52,14 +67,6 @@ survey_mpde <- function (x, design,
 
   if (!is.R6(family) || !is(family, "ModelFamily")) {
     abort("`family` must be a valid model family from model_family()")
-  }
-
-  if (is.character(divergence)) {
-    divergence <- phi_divergence(divergence)
-  }
-
-  if (!is.R6(divergence) || !is(divergence, "PhiDivergence")) {
-    abort("`divergence` must be a valid phi divergence from phi_divergence()")
   }
 
   if (missing(initial)) {
@@ -195,6 +202,9 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
     t()
 
   gap_const <- divergence$phi(0)
+  if (!is.finite(gap_const)) {
+    gaps <- matrix(0., nrow = 2, ncol = 0)
+  }
 
   int_pts <- createSparseGrid('GQU', 1, poly_order)
 

@@ -3,6 +3,7 @@
 S3method(coef,survey_mde)
 S3method(vcov,survey_mde)
 export(alpha_divergence)
+export(generalized_divergence)
 export(model_family)
 export(phi_divergence)
 export(power_divergence)

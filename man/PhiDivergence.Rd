@@ -11,6 +11,8 @@ A class to encapsulate different phi divergences.
 \describe{
 \item{\code{name}}{full name of the divergence measure}
 
+\item{\code{type}}{type of this phi divergence}
+
 \item{\code{phi}}{divergence generator \eqn{\phi()}}
 
 \item{\code{w1}}{function to evaluate \eqn{\phi(x) - x \phi'(x)}}
@@ -25,6 +27,7 @@ A class to encapsulate different phi divergences.
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-PhiDivergence-new}{\code{PhiDivergence$new()}}
+\item \href{#method-PhiDivergence-is}{\code{PhiDivergence$is()}}
 \item \href{#method-PhiDivergence-clone}{\code{PhiDivergence$clone()}}
 }
 }
@@ -34,7 +37,7 @@ A class to encapsulate different phi divergences.
 \subsection{Method \code{new()}}{
 Define a new phi divergence.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{PhiDivergence$new(name, phi, w1, w2)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{PhiDivergence$new(name, phi, w1, w2, type)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -49,6 +52,25 @@ and satisfy \eqn{\phi(1) = 1}, \eqn{\lim_{t \to 0^+} \phi(t) = \phi(0)}.}
 \item{\code{w1}}{function to evaluate \eqn{\phi(x) - x \phi'(x)}}
 
 \item{\code{w2}}{function to evaluate \eqn{\phi(x) - x \phi'(x) + x^2 \phi''(x)}}
+
+\item{\code{type}}{a type description for this divergence}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-PhiDivergence-is"></a>}}
+\if{latex}{\out{\hypertarget{method-PhiDivergence-is}{}}}
+\subsection{Method \code{is()}}{
+Check if this Phi divergence is of a specific type.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{PhiDivergence$is(type)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{type}}{the id to check against}
 }
 \if{html}{\out{</div>}}
 }
