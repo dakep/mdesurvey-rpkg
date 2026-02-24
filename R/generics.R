@@ -3,6 +3,7 @@
 #' Extract coefficients from a fitted MDE.
 #'
 #' @param object an MDE object fitted to survey data by [survey_mpde()] or [survey_mhde()].
+#' @param ... currently unused.
 #' @export
 coef.survey_mde <- function (object, ...) {
   object$estimates

@@ -1,6 +1,6 @@
 #include <R_ext/Rdynload.h>
 
-#include "kde.hpp"
+#include "kde.h"
 
 //! R initialzing function (must be in the global namespace).
 extern "C" void R_init_mdesurvey(DllInfo *dll) noexcept;

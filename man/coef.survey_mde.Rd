@@ -8,6 +8,8 @@
 }
 \arguments{
 \item{object}{an MDE object fitted to survey data by \code{\link[=survey_mpde]{survey_mpde()}} or \code{\link[=survey_mhde]{survey_mhde()}}.}
+
+\item{...}{currently unused.}
 }
 \description{
 Extract coefficients from a fitted MDE.

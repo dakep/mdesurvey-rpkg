@@ -1,5 +1,7 @@
+#include "kde.h"
+
 #include <RcppArmadillo.h>
-#include "r_interface_utilities.hpp"
+#include "r_interface_utilities.h"
 
 namespace {
 template <typename KernelFunc>

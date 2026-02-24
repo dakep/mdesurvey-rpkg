@@ -2,6 +2,7 @@ Package: mdesurvey
 Type: Package
 Title: Minimum Divergence Estimators for Complex Survey Designs
 Version: 0.2.0
+Date: 2026-02-23
 Authors@R: c(
     person(
       "David", "Kepplinger",
@@ -12,6 +13,9 @@ Authors@R: c(
 Description: Minimum Divergence Estimators (MDE) for parametric
   superpopulation models in finite populations with complex
   survey weights.
+Biarch: true
+URL: https://github.com/dakep/mdesurvey-rpkg
+BugReports: https://github.com/dakep/mdesurvey-rpkg/issues
 Depends:
   R (>= 4.1.0)
 Imports:
@@ -27,7 +31,7 @@ Suggests:
 LinkingTo:
   Rcpp,
   RcppArmadillo (>= 0.9.600)
-License: MIT
+License: MIT + file LICENSE
 NeedsCompilation: yes
 Encoding: UTF-8
 LazyData: true

@@ -1,4 +1,4 @@
-#include "r_interface_utilities.hpp"
+#include "r_interface_utilities.h"
 
 using arma::vec;
 
