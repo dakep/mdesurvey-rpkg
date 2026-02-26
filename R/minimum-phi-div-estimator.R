@@ -135,7 +135,18 @@ mpde_covest <- function (x, estimates, integrator, family, design, divergence) {
     warn("Sandwich covariance estimate is singular. Computing model-based estimate instead.",
          parent = cnd)
 
-    (solve(finf) / outer(sqrt(neff), sqrt(neff))) |>
+    finf_inv <- tryCatch(solve(finf),
+                         error = \(cnd) {
+                           # Try a Moore-Penrose pseudo-inverse
+                           tryCatch(pseudo_inverse(finf),
+                                    error = \(cnd) {
+                                      warn("Fisher Information matrix is not positive semi-definite.",
+                                           parent = cnd)
+                                      NULL
+                                    })
+                         })
+
+    (finf_inv / outer(sqrt(neff), sqrt(neff))) |>
       structure(type = "model")
   })
 
@@ -143,6 +154,18 @@ mpde_covest <- function (x, estimates, integrator, family, design, divergence) {
   names(neff) <- family$parameter_names
   list(cov = covest,
        neff = neff)
+}
+
+#' @importFrom rlang abort
+pseudo_inverse <- function (x) {
+  evd <- eigen(x, symmetric = TRUE)
+  if (!all(evd$d >= -.Machine$double.eps)) {
+    abort("matrix is not positive semi-definite")
+  }
+  sing <- which(evd$d < .Machine$double.eps)
+  evd$values[] <- 1 / evd$values
+  evd$values[sing] <- 0
+  tcrossprod(evd$vectors %*% diag(evd$values), evd$vectors)
 }
 
 #' Functor to Create Fixed-grid Gaussian Quadrature For General Phi Divergences
