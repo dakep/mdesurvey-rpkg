@@ -54,7 +54,7 @@ survey_mhde <- function (x, design,
     abort("`family` must be a valid model family from model_family()")
   }
 
-  if (missing(initial)) {
+  if (missing(initial) || is.null(initial)) {
     initial <- family$initial(svy$x, design = design)
   }
   if (is.null(names(initial))) {
