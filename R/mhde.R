@@ -150,7 +150,18 @@ mhde_covest <- function (x, estimates, int_fun, family, design) {
     warn("Sandwich covariance estimate is singular. Computing model-based estimate instead.",
          parent = cnd)
 
-    (solve(finf) / outer(sqrt(neff), sqrt(neff))) |>
+    finf_inv <- tryCatch(solve(finf),
+                         error = \(cnd) {
+                           # Try a Moore-Penrose pseudo-inverse
+                           tryCatch(pseudo_inverse(finf),
+                                    error = \(cnd) {
+                                      warn("Fisher Information matrix is not positive semi-definite.",
+                                           parent = cnd)
+                                      NULL
+                                    })
+                         })
+
+    (finf_inv / outer(sqrt(neff), sqrt(neff))) |>
       structure(type = "model")
   })
 
