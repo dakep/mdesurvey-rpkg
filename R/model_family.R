@@ -81,6 +81,17 @@ ModelFamily <- R6Class(
     #'   `function(x, design) -> vector of initial estimates`
     initial = NULL,
 
+    #' @field reparameterize_from_mv function to get the family's natural parameters from
+    #'   a mean & variance parameterization.
+    #'   May not be well defined, in which case the function should return a parameter vector
+    #'   of NA's.
+    reparameterize_from_mv = NULL,
+
+    #' @field reparameterize_to_mv function to get the mean and variance from the
+    #'   family's parameters.
+    #'   May not be well defined, in which case the undefined moments should be NA.
+    reparameterize_to_mv = NULL,
+
     #' @description
     #' Define a new model family.
     #'
@@ -109,15 +120,17 @@ ModelFamily <- R6Class(
     #'   `fisher_inf(params) -> Fisher Information (numeric matrix)`
     #' @param initial function to get initial estimates.
     #'   `function(x, design) -> vector of initial estimates`
-    #' @param .register register the model family with the package?
-    #'   If this is true, subsequent calls to [model_family()] can use simply the name to
-    #'   retrieve this model family.
+    #' @param reparameterize_from_mv function to get the
+    #'   family's natural parameters from a mean & variance parameterization.
+    #'   May not be well defined, in which case the functions should return a parameter vector
+    #'   of NA's.
+    #' @param reparameterize_to_mv function to get the mean and variance from the
+    #'   family's parameters.
+    #'   May not be well defined, in which case the undefined moments should be NA.
     initialize = \ (name, parameter_names, range, dfun, pfun, raw_scores, hessian, fisher_inf,
-                    trans, inv_trans, initial, .register = FALSE) {
+                    trans, inv_trans, initial, reparameterize_from_mv, reparameterize_to_mv) {
       self$name <- name
-      if (!missing(parameter_names)) {
-        self$parameter_names <- parameter_names
-      }
+      self$parameter_names <- parameter_names
       if (is.null(dim(range))) {
         range <- matrix(range, nrow = 1)
       }
@@ -131,13 +144,17 @@ ModelFamily <- R6Class(
       self$inv_trans <- match.fun(inv_trans)
       self$initial <- match.fun(initial)
 
-      if (isTRUE(.register)) {
-        name_lc <- str_to_lower(name)
-        if (exists(name_lc, envir = .model_family_register)) {
-          warn(sprintf("Model family with name %s already exists and will be overwritten.", name_lc))
+      self$reparameterize_to_mv <- match.fun(reparameterize_to_mv)
+      self$reparameterize_from_mv <- if (missing(reparameterize_from_mv)) {
+        \(...) {
+          params <- rep.int(NA_real_, length(self$reparameterize_from_mv))
+          names(params) <- self$parameter_names
+          params
         }
-        assign(name_lc, value = self, envir = .model_family_register)
+      } else {
+        match.fun(reparameterize_from_mv)
       }
+
     },
 
     #' @description

@@ -48,6 +48,8 @@ Collate:
     'mdesurvey_pkg.R'
     'mhde.R'
     'minimum-phi-div-estimator.R'
+    'model-family-lock.R'
+    'mpde_regression.R'
     'partition-univariate.R'
     'phi-divergence.R'
     'survey-helper.R'

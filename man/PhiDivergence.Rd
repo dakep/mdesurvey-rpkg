@@ -4,7 +4,7 @@
 \alias{PhiDivergence}
 \title{PhiDivergence Class}
 \description{
-A class to encapsulate different phi divergences.
+A class to encapsulate generalized phi divergences.
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
@@ -13,6 +13,8 @@ A class to encapsulate different phi divergences.
 
 \item{\code{type}}{type of this phi divergence}
 
+\item{\code{lambda}}{exponent for the model density \eqn{q^\lambda}.}
+
 \item{\code{phi}}{divergence generator \eqn{\phi()}}
 
 \item{\code{w1}}{function to evaluate \eqn{\phi(x) - x \phi'(x)}}
@@ -20,6 +22,8 @@ A class to encapsulate different phi divergences.
 \item{\code{w2}}{function to evaluate \eqn{x^2 \phi''(x)}}
 
 \item{\code{phi_2nd_deriv_at_1}}{value of \eqn{\phi''(1)}}
+
+\item{\code{lambda_neq_1}}{whether \eqn{\lambda \neq 1}}
 }
 \if{html}{\out{</div>}}
 }
@@ -37,7 +41,7 @@ A class to encapsulate different phi divergences.
 \subsection{Method \code{new()}}{
 Define a new phi divergence.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{PhiDivergence$new(name, phi, w1, w2, type)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{PhiDivergence$new(name, phi, w1, w2, lambda = 1, type)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -52,6 +56,8 @@ and satisfy \eqn{\phi(1) = 1}, \eqn{\lim_{t \to 0^+} \phi(t) = \phi(0)}.}
 \item{\code{w1}}{function to evaluate \eqn{\phi(x) - x \phi'(x)}}
 
 \item{\code{w2}}{function to evaluate \eqn{\phi(x) - x \phi'(x) + x^2 \phi''(x)}}
+
+\item{\code{lambda}}{the model density exponent}
 
 \item{\code{type}}{a type description for this divergence}
 }

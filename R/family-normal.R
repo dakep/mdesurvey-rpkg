@@ -2,7 +2,6 @@
 #' @importFrom survey svymean svyvar
 #' @include model_family.R
 Normal <- ModelFamily$new(
-  .register       = TRUE,
   name            = "Normal",
   parameter_names = c("mean", "sd"),
   trans           = \(params) { params[[2]] <- log(params[[2]]); params; },
@@ -32,6 +31,15 @@ Normal <- ModelFamily$new(
   initial = \(x, design) {
     c(svymean(x, design = design),
       sqrt(svyvar(x, design = design)))
+  },
+  reparameterize_from_mv <- function (mean, var) {
+    c(mean = mean, sd = sqrt(var))
+  },
+  reparameterize_to_mv <- function (params) {
+    c(mean = params[['mean']], var = params[['sd']]^2)
   }
 )
 
+
+.model_family_register$normal <-
+  .model_family_register$gaussian <- Normal

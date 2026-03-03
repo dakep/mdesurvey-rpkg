@@ -1,11 +1,11 @@
 .k_euler_gamma <- 0.57721566490153286060651209008240
 .k_pisq_6 <- 1.6449340668482264364724151666460 # pi^2/6
 
-#' @importFrom stats dweibull pweibull
+#' @importFrom stats dweibull pweibull uniroot
 #' @importFrom survey svymean
+#' @importFrom rlang warn
 #' @include model_family.R
 Weibull <- ModelFamily$new(
-  .register       = TRUE,
   name            = "Weibull",
   parameter_names = c("shape", "scale"),
   trans           = log,
@@ -67,5 +67,37 @@ Weibull <- ModelFamily$new(
     }
 
     c(k_est, lambda_est)
+  },
+  reparameterize_from_mv = \(mean, var) {
+    tryCatch({
+      cvsq <- (var / mean^2 + 1)
+      k0 <- (sqrt(var) / mean)^-1.086
+
+      shape_sol <- tryCatch({
+        uniroot(f = \(k) {
+          exp(lgamma(1 + 2 / k) - 2 * lgamma(1 + 1/k)) - cvsq
+        }, lower = 0.5 * k0, upper = 2 * k0)
+      }, error = \(cnd) {
+        uniroot(f = \(k) {
+          exp(lgamma(1 + 2 / k) - 2 * lgamma(1 + 1/k)) - cvsq
+        }, lower = 1e-6 * k0, upper = 1e6 * k0)
+      })
+
+      shape <- shape_sol$root
+
+      c(shape = shape,
+        scale = mean / gamma(1 + 1 / shape))
+    }, error = \(cnd) {
+      warn("Cannot find shape/scale parameters for the Weibull family",
+           parent = cnd)
+      c(shape = NA_real_, scale = NA_real_)
+    })
+  },
+  reparameterize_to_mv <- function (params) {
+    c(mean = params[['scale']] * gamma(1 + 1 / params[['shape']]),
+      var =  params[['scale']]^2 * (gamma(1 + 2 / params[['shape']]) -
+                                      gamma(1 + 1 / params[['shape']])^2))
   }
 )
+
+.model_family_register$weibull <- Weibull

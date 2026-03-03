@@ -2,7 +2,6 @@
 #' @importFrom survey svymean
 #' @include model_family.R
 Gamma <- ModelFamily$new(
-  .register       = TRUE,
   name            = "Gamma",
   parameter_names = c("shape", "scale"),
   trans           = log,
@@ -38,6 +37,19 @@ Gamma <- ModelFamily$new(
     shape <- uniroot(\(a) log(a) - digamma(a) - loglik_root,
                      interval = c(1e-6, max(x)))
 
-    c(shape$root, wmx / shape$root)
+    c(shape = shape$root, scale = wmx / shape$root)
+  },
+  reparameterize_from_mv <- function (mean, var) {
+    if (!isTRUE(mean > .Machine$double.eps) || !isTRUE(var > .Machine$double.eps)) {
+      c(shape = NA_real_, scale = NA_real_)
+    } else {
+      c(shape = mean^2 / var, scale = var / mean)
+    }
+  },
+  reparameterize_to_mv <- function (params) {
+    c(mean = prod(params),
+      var  = params[['shape']] * params[['scale']]^2)
   }
 )
+
+.model_family_register$gamma <- Gamma

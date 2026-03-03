@@ -6,11 +6,11 @@
 \alias{power_divergence}
 \title{Get or Define a Phi Divergence}
 \usage{
-phi_divergence(name, phi, w1, w2)
+phi_divergence(name, phi, w1, w2, lambda = 1)
 
 alpha_divergence(alpha, specialized = TRUE)
 
-power_divergence(lambda, specialized = TRUE)
+power_divergence(alpha, specialized = TRUE)
 }
 \arguments{
 \item{name}{name of the phi divergence.
@@ -19,25 +19,28 @@ If missing, list all currently known divergences.}
 \item{phi, w1, w2}{the generator of the phi divergence and function of its derivatives.
 Passed on to initialize a new \link{PhiDivergence}.}
 
-\item{alpha}{value for the \eqn{\alpha} parameter.}
+\item{lambda}{the exponent for (model density) \eqn{q}.
+If different from 1, care must be taken that \eqn{D_{\phi,\lambda}} is a valid
+divergence!}
+
+\item{alpha}{value for the \eqn{\alpha} power parameter.}
 
 \item{specialized}{whether specialized (named) Phi divergences should be returned for
-certain values of \code{lambda}.}
-
-\item{lambda}{value for the \eqn{\lambda} power parameter.}
+certain values of \code{alpha}.}
 }
 \value{
 an object of type \link{PhiDivergence}.
 }
 \description{
-A phi divergence is defined through its generator \eqn{\phi} as
-\deqn{D_\phi(p \| q) := \int q(x) \phi(p(x) / q(x)) \mathrm{d} x.}
+A phi divergence is defined through its generator \eqn{\phi} and the model density
+exponent \eqn{\lambda} as
+\deqn{D_{\phi,\lambda}(p \| q) := \int q^\lambda(x) \phi(p(x) / q(x)) \mathrm{d} x.}
 
 The convenience function \code{alpha_divergence()} defines a specific
-\eqn{\alpha} divergence with generator
+\eqn{\alpha} divergence with \eqn{\lambda = 1} and  generator
 \deqn{f(x) = \frac{x^\alpha - \alpha x - (1 - \alpha)}{\alpha (\alpha - 1)}.}
 
 The convenience function \code{power_divergence()} defines a specific
-power divergence with generator
-\deqn{f(x) = \frac{1}{\lambda (\lambda + 1)} (x^{\lambda + 1} - 1).}
+power divergence with \eqn{\lambda=1} and generator
+\deqn{f(x) = \frac{1}{\alpha (\alpha + 1)} (x^{\alpha + 1} - 1).}
 }

@@ -2,24 +2,29 @@
 
 #' Get or Define a Phi Divergence
 #'
-#' A phi divergence is defined through its generator \eqn{\phi} as
-#' \deqn{D_\phi(p \| q) := \int q(x) \phi(p(x) / q(x)) \mathrm{d} x.}
+#' A phi divergence is defined through its generator \eqn{\phi} and the model density
+#' exponent \eqn{\lambda} as
+#' \deqn{D_{\phi,\lambda}(p \| q) := \int q^\lambda(x) \phi(p(x) / q(x)) \mathrm{d} x.}
 #'
 #' @param name name of the phi divergence.
 #'   If missing, list all currently known divergences.
 #' @param phi,w1,w2 the generator of the phi divergence and function of its derivatives.
 #'   Passed on to initialize a new [PhiDivergence].
+#' @param lambda the exponent for (model density) \eqn{q}.
+#'   If different from 1, care must be taken that \eqn{D_{\phi,\lambda}} is a valid
+#'   divergence!
 #' @returns an object of type [PhiDivergence].
 #' @importFrom rlang abort
 #' @export
-phi_divergence <- function (name, phi, w1, w2) {
+phi_divergence <- function (name, phi, w1, w2, lambda = 1) {
   if (missing(name)) {
     return(objects(name = .phi_divergence_register))
   } else if (is.character(name)) {
     if (exists(name, where = .phi_divergence_register) ||
         exists(str_to_lower(name), where = .phi_divergence_register)) {
       if (!missing(phi) || !missing(w1) || !missing(w2)) {
-        abort(sprintf("Divergence with name %s already exists. In this case `phi`, `w1`, and `w2` must be empty!"))
+        abort(paste(sprintf("Divergence with name %s already exists.", name),
+                    "In this case all other arguments must be empty!"))
       }
 
       if (exists(name, where = .phi_divergence_register)) {
@@ -28,7 +33,7 @@ phi_divergence <- function (name, phi, w1, w2) {
 
       return(.phi_divergence_register[[str_to_lower(name)]])
     } else if (!missing(phi) && !missing(w1) && !missing(w2)) {
-      return(PhiDivergence$new(name = name, phi = phi, w1 = w1, w2 = w2,
+      return(PhiDivergence$new(name = name, phi = phi, w1 = w1, w2 = w2, lambda = lambda,
                                type = "unkown"))
     } else {
       abort(paste("Unknown divergence", name))
@@ -39,7 +44,7 @@ phi_divergence <- function (name, phi, w1, w2) {
 
 #' @description
 #' The convenience function `alpha_divergence()` defines a specific
-#' \eqn{\alpha} divergence with generator
+#' \eqn{\alpha} divergence with \eqn{\lambda = 1} and  generator
 #' \deqn{f(x) = \frac{x^\alpha - \alpha x - (1 - \alpha)}{\alpha (\alpha - 1)}.}
 #'
 #' @param alpha value for the \eqn{\alpha} parameter.
@@ -68,31 +73,31 @@ alpha_divergence <- function (alpha, specialized = TRUE) {
 
 #' @description
 #' The convenience function `power_divergence()` defines a specific
-#' power divergence with generator
-#' \deqn{f(x) = \frac{1}{\lambda (\lambda + 1)} (x^{\lambda + 1} - 1).}
+#' power divergence with \eqn{\lambda=1} and generator
+#' \deqn{f(x) = \frac{1}{\alpha (\alpha + 1)} (x^{\alpha + 1} - 1).}
 #'
-#' @param lambda value for the \eqn{\lambda} power parameter.
+#' @param alpha value for the \eqn{\alpha} power parameter.
 #' @param specialized whether specialized (named) Phi divergences should be returned for
-#'   certain values of `lambda`.
+#'   certain values of `alpha`.
 #' @export
 #' @rdname phi_divergence
-power_divergence <- function (lambda, specialized = TRUE) {
+power_divergence <- function (alpha, specialized = TRUE) {
   if (isTRUE(specialized)) {
-    if (abs(lambda + 1) < .Machine$double.eps) {
+    if (abs(alpha + 1) < .Machine$double.eps) {
       return(phi_divergence("ReverseKL"))
-    } else if (abs(lambda) < .Machine$double.eps) {
+    } else if (abs(alpha) < .Machine$double.eps) {
       return(phi_divergence("KL"))
-    } else if (abs(lambda + 0.5) < .Machine$double.eps) {
+    } else if (abs(alpha + 0.5) < .Machine$double.eps) {
       return(phi_divergence("Hellinger"))
     }
   }
 
-  # Drop the constant 1 / (lambda * (lambda + 1)) from w1 and w2
+  # Drop the constant 1 / (alpha * (alpha + 1)) from w1 and w2
   # for numerical stability
-  PhiDivergence$new(name = sprintf("power divergence (lambda=%f)", lambda),
-                    phi  = \(x) (x^(lambda + 1) - 1)      / (lambda * (lambda + 1)),
-                    w1   = \(x) -lambda * x^(lambda + 1)  / (lambda * (lambda + 1)),
-                    w2   = \(x) lambda^2 * x^(lambda + 1) / (lambda * (lambda + 1)),
+  PhiDivergence$new(name = sprintf("power divergence (lambda=%f)", alpha),
+                    phi  = \(x) (x^(alpha + 1) - 1)     / (alpha * (alpha + 1)),
+                    w1   = \(x) -alpha * x^(alpha + 1)  / (alpha * (alpha + 1)),
+                    w2   = \(x) alpha^2 * x^(alpha + 1) / (alpha * (alpha + 1)),
                     type = "power")
 }
 
@@ -183,7 +188,7 @@ GeneralizedDivergence <- R6Class(
 )
 
 #' @title PhiDivergence Class
-#' @description A class to encapsulate different phi divergences.
+#' @description A class to encapsulate generalized phi divergences.
 #' @importFrom R6 R6Class
 PhiDivergence <- R6Class(
   classname = "PhiDivergence",
@@ -194,6 +199,9 @@ PhiDivergence <- R6Class(
 
     #' @field type type of this phi divergence
     type = NULL,
+
+    #' @field lambda exponent for the model density \eqn{q^\lambda}.
+    lambda = NULL,
 
     #' @field phi divergence generator \eqn{\phi()}
     phi = NULL,
@@ -207,6 +215,9 @@ PhiDivergence <- R6Class(
     #' @field phi_2nd_deriv_at_1 value of \eqn{\phi''(1)}
     phi_2nd_deriv_at_1 = NULL,
 
+    #' @field lambda_neq_1 whether \eqn{\lambda \neq 1}
+    lambda_neq_1 = NULL,
+
     #' @description
     #' Define a new phi divergence.
     #'
@@ -216,15 +227,18 @@ PhiDivergence <- R6Class(
     #'   and satisfy \eqn{\phi(1) = 1}, \eqn{\lim_{t \to 0^+} \phi(t) = \phi(0)}.
     #' @param w1 function to evaluate \eqn{\phi(x) - x \phi'(x)}
     #' @param w2 function to evaluate \eqn{\phi(x) - x \phi'(x) + x^2 \phi''(x)}
+    #' @param lambda the model density exponent
     #' @param type a type description for this divergence
     #' @importFrom stringr str_to_lower
     #' @importFrom rlang abort
-    initialize = \(name, phi, w1, w2, type) {
+    initialize = \(name, phi, w1, w2, lambda = 1, type) {
       self$name <- name
 
       self$phi <- match.fun(phi)
       self$w1 <- match.fun(w1)
       self$w2 <- match.fun(w2)
+      self$lambda <- as.numeric(lambda[[1]])
+      lambda_neq_1 <- isTRUE(abs(self$lambda - 1) > .Machine$double.eps)
 
       if (!missing(type)) {
         self$type <- type[[1]]

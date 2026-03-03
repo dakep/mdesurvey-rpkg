@@ -42,6 +42,11 @@ and then the upper-triagonal elements in row-first fashion (as returned by \code
 
 \item{\code{initial}}{function to get initial estimates.
 \verb{function(x, design) -> vector of initial estimates}}
+
+\item{\code{mv_reparameterize}}{function to get the family's natural parameters from
+a mean & variance parameterization.
+May not be well defined, in which case the function should return a parameter vector
+of NA's.}
 }
 \if{html}{\out{</div>}}
 }
@@ -71,7 +76,7 @@ Define a new model family.
   trans,
   inv_trans,
   initial,
-  .register = FALSE
+  mv_reparameterize
 )}\if{html}{\out{</div>}}
 }
 
@@ -113,9 +118,10 @@ and the other direction (\code{inv_trans()}).}
 \item{\code{initial}}{function to get initial estimates.
 \verb{function(x, design) -> vector of initial estimates}}
 
-\item{\code{.register}}{register the model family with the package?
-If this is true, subsequent calls to \code{\link[=model_family]{model_family()}} can use simply the name to
-retrieve this model family.}
+\item{\code{mv_reparameterize}}{function to get the family's natural parameters from
+a mean & variance parameterization.
+May not be well defined, in which case the function should return a parameter vector
+of NA's.}
 }
 \if{html}{\out{</div>}}
 }
