@@ -4,11 +4,12 @@
 #' Compute the survey MPDE for the mean regression parameters under a user-specified continuous
 #' model for the conditional distribution \eqn{Y \mid X = x} for **discrete** \eqn{X}.
 #'
-#' @param x a formula, symbol, expression, vector, or matrix specifying the linear model.
+#' @param x a formula or matrix specifying the linear model.
 #'   The objects are first looked up in the provided `design`, then in the calling environment.
 #' @param design the survey design created by [survey::svydesign()] and friends.
-#' @param initial_coefs an initial estimate for the regression coefficients.
-#'   If the vector has names, those will be used to match the covariates in the formula `x`.
+#' @param initial an initial estimate for the regression coefficients and the variance component.
+#'   The variance component must have name `".var"` and the other names are used to match
+#'   the covariates in the formula `x`
 #' @param initial_var an initial estimate for the variance component.
 #' @param family either the name of a known model family, or a
 #'   model family as returned by [model_family()].
@@ -25,6 +26,7 @@
 #'
 #' @param optim_method,optim_control method and control options passed on to [stats::optim()].
 #' @importFrom stats uniroot optim bw.nrd model.frame model.matrix model.response lm.fit
+#' @importFrom stats na.omit na.fail
 #' @importFrom rlang warn abort enquo
 #' @importFrom survey svydesign
 #' @importFrom methods is
@@ -32,7 +34,7 @@
 #' @export
 survey_regression_mpde <- function (x,
                                     design,
-                                    initial_coefs,
+                                    initial,
                                     initial_var,
                                     family,
                                     divergence = 'HD',
@@ -60,7 +62,8 @@ survey_regression_mpde <- function (x,
   }
 
   # Define groups
-  mf <- model.frame(x, design$variables)
+  mf <- model.frame(x, design$variables,
+                    na.action = if (isTRUE(na.rm)) na.omit else na.fail)
   tms <- terms(mf)
   y <- model.response(mf) |>
     unname()
@@ -109,24 +112,23 @@ survey_regression_mpde <- function (x,
       list(x = subset$x))
   })
 
-  if (missing(initial_coefs) || is.null(initial_coefs)) {
+  if (missing(initial) || is.null(initial)) {
     grp_init <- vapply(grouped, FUN.VALUE = numeric(2), FUN = \(subset) {
       subset_init <- family$initial(subset$y, svydesign(~ 1, weights = ~ wgts,
                                                         data = data.frame(wgts = subset$wgts)))
       family$reparameterize_to_mv(subset_init)
     })
 
-    initial <- c(.var = mean(grp_init['var', ]),
+    # Use the geometric mean of the group variances
+    initial <- c(.var = mean(log(grp_init['var', ])),
                  lm.fit(x = do.call(rbind, lapply(grouped, `[[`, 'x')),
                         y = grp_init['mean', ])$coefficients)
-  }
-
-  if (length(initial['.var']) != 1) {
+  } else if (length(initial['.var']) != 1) {
     abort("Initial estimate must contain entry for the variance under `.var`")
+  } else {
+    initial <- c(.var = log(initial[['.var']]),
+                 initial[names(initial) != '.var'])
   }
-
-  initial <- c(.var = log(initial[['.var']]),
-               initial[names(initial) != '.var'])
 
   mpd_est <- optim(initial,
                    fn = \(regpars) {
@@ -150,6 +152,7 @@ survey_regression_mpde <- function (x,
                  mpd_est$convergence, paste0('', mpd_est$message)))
   }
 
+  initial[['.var']] <- exp(initial[['.var']])
   reg_coefs <- mpd_est$par[-1L]
   var_est <- exp(mpd_est$par[[1L]])
 

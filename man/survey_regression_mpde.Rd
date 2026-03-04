@@ -8,7 +8,7 @@ Survey Designs}
 survey_regression_mpde(
   x,
   design,
-  initial_coefs,
+  initial,
   initial_var,
   family,
   divergence = "HD",
@@ -21,13 +21,14 @@ survey_regression_mpde(
 )
 }
 \arguments{
-\item{x}{a formula, symbol, expression, vector, or matrix specifying the linear model.
+\item{x}{a formula or matrix specifying the linear model.
 The objects are first looked up in the provided \code{design}, then in the calling environment.}
 
 \item{design}{the survey design created by \code{\link[survey:svydesign]{survey::svydesign()}} and friends.}
 
-\item{initial_coefs}{an initial estimate for the regression coefficients.
-If the vector has names, those will be used to match the covariates in the formula \code{x}.}
+\item{initial}{an initial estimate for the regression coefficients and the variance component.
+The variance component must have name \code{".var"} and the other names are used to match
+the covariates in the formula \code{x}}
 
 \item{initial_var}{an initial estimate for the variance component.}
 

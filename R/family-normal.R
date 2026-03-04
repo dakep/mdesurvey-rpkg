@@ -29,8 +29,8 @@ Normal <- ModelFamily$new(
            ncol = 2)
   },
   initial = \(x, design) {
-    c(svymean(x, design = design),
-      sqrt(svyvar(x, design = design)))
+    c(mean = svymean(x, design = design),
+      sd   = sqrt(svyvar(x, design = design)))
   },
   reparameterize_from_mv <- function (mean, var) {
     c(mean = mean, sd = sqrt(var))

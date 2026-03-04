@@ -66,7 +66,7 @@ Weibull <- ModelFamily$new(
       lambda_est <- NA_real_
     }
 
-    c(k_est, lambda_est)
+    c(shape = k_est, scale = lambda_est)
   },
   reparameterize_from_mv = \(mean, var) {
     tryCatch({
