@@ -43,10 +43,14 @@ and then the upper-triagonal elements in row-first fashion (as returned by \code
 \item{\code{initial}}{function to get initial estimates.
 \verb{function(x, design) -> vector of initial estimates}}
 
-\item{\code{mv_reparameterize}}{function to get the family's natural parameters from
+\item{\code{reparameterize_from_mv}}{function to get the family's natural parameters from
 a mean & variance parameterization.
 May not be well defined, in which case the function should return a parameter vector
 of NA's.}
+
+\item{\code{reparameterize_to_mv}}{function to get the mean and variance from the
+family's parameters.
+May not be well defined, in which case the undefined moments should be NA.}
 }
 \if{html}{\out{</div>}}
 }
@@ -76,7 +80,8 @@ Define a new model family.
   trans,
   inv_trans,
   initial,
-  mv_reparameterize
+  reparameterize_from_mv,
+  reparameterize_to_mv
 )}\if{html}{\out{</div>}}
 }
 
@@ -118,10 +123,14 @@ and the other direction (\code{inv_trans()}).}
 \item{\code{initial}}{function to get initial estimates.
 \verb{function(x, design) -> vector of initial estimates}}
 
-\item{\code{mv_reparameterize}}{function to get the family's natural parameters from
-a mean & variance parameterization.
-May not be well defined, in which case the function should return a parameter vector
+\item{\code{reparameterize_from_mv}}{function to get the
+family's natural parameters from a mean & variance parameterization.
+May not be well defined, in which case the functions should return a parameter vector
 of NA's.}
+
+\item{\code{reparameterize_to_mv}}{function to get the mean and variance from the
+family's parameters.
+May not be well defined, in which case the undefined moments should be NA.}
 }
 \if{html}{\out{</div>}}
 }

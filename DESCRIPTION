@@ -1,8 +1,8 @@
 Package: mdesurvey
 Type: Package
 Title: Minimum Divergence Estimators for Complex Survey Designs
-Version: 0.2.1
-Date: 2026-02-27
+Version: 0.3.0
+Date: 2026-03-04
 Authors@R: c(
     person(
       "David", "Kepplinger",
@@ -48,7 +48,7 @@ Collate:
     'mdesurvey_pkg.R'
     'mhde.R'
     'minimum-phi-div-estimator.R'
-    'model-family-lock.R'
+    'model_family-lock.R'
     'mpde_regression.R'
     'partition-univariate.R'
     'phi-divergence.R'

@@ -8,35 +8,29 @@
 #'
 #' @param name name of the phi divergence.
 #'   If missing, list all currently known divergences.
-#' @param phi,w1,w2 the generator of the phi divergence and function of its derivatives.
-#'   Passed on to initialize a new [PhiDivergence].
-#' @param lambda the exponent for (model density) \eqn{q}.
-#'   If different from 1, care must be taken that \eqn{D_{\phi,\lambda}} is a valid
-#'   divergence!
+#' @param ... passed on to initialize a new [PhiDivergence].
+#'   Note that if the exponent for (model density) \eqn{q} is different from 1
+#'   care must be taken that \eqn{D_{\phi,\lambda}} is a valid divergence!
 #' @returns an object of type [PhiDivergence].
-#' @importFrom rlang abort
+#' @importFrom rlang abort dots_n
 #' @export
-phi_divergence <- function (name, phi, w1, w2, lambda = 1) {
+phi_divergence <- function (name, ...) {
   if (missing(name)) {
     return(objects(name = .phi_divergence_register))
   } else if (is.character(name)) {
     if (exists(name, where = .phi_divergence_register) ||
         exists(str_to_lower(name), where = .phi_divergence_register)) {
-      if (!missing(phi) || !missing(w1) || !missing(w2)) {
+      if (dots_n(...) > 0L) {
         abort(paste(sprintf("Divergence with name %s already exists.", name),
-                    "In this case all other arguments must be empty!"))
+                    "In this case `...` must be empty!"))
       }
-
       if (exists(name, where = .phi_divergence_register)) {
         return(.phi_divergence_register[[name]])
       }
 
       return(.phi_divergence_register[[str_to_lower(name)]])
-    } else if (!missing(phi) && !missing(w1) && !missing(w2)) {
-      return(PhiDivergence$new(name = name, phi = phi, w1 = w1, w2 = w2, lambda = lambda,
-                               type = "unkown"))
     } else {
-      abort(paste("Unknown divergence", name))
+      return(PhiDivergence$new(name = name, ...))
     }
   }
   abort("`name` must be a character")
@@ -53,6 +47,9 @@ phi_divergence <- function (name, phi, w1, w2, lambda = 1) {
 #' @export
 #' @rdname phi_divergence
 alpha_divergence <- function (alpha, specialized = TRUE) {
+  if (length(alpha) != 1L || !is.numeric(alpha) || !is.finite(alpha)) {
+    abort("`alpha` must be a finite scalar")
+  }
   if (isTRUE(specialized)) {
     if (abs(alpha - 1) < .Machine$double.eps) {
       return(phi_divergence("KL"))
@@ -68,6 +65,9 @@ alpha_divergence <- function (alpha, specialized = TRUE) {
                     phi  = \(x) (x^alpha - alpha * x - (1 - alpha)) / (alpha * (alpha - 1)),
                     w1   = \(x) -x^alpha / alpha,
                     w2   = \(x) x^alpha * (alpha - 1) / alpha,
+                    phi_deriv_inf = if (alpha < 1) {
+                      1 / (1 - alpha)
+                    } else if (abs(alpha - 1) < .Machine$double.eps) 1 else Inf,
                     type = "alpha")
 }
 
@@ -82,6 +82,9 @@ alpha_divergence <- function (alpha, specialized = TRUE) {
 #' @export
 #' @rdname phi_divergence
 power_divergence <- function (alpha, specialized = TRUE) {
+  if (length(alpha) != 1L || !is.numeric(alpha) || !is.finite(alpha)) {
+    abort("`alpha` must be a finite scalar")
+  }
   if (isTRUE(specialized)) {
     if (abs(alpha + 1) < .Machine$double.eps) {
       return(phi_divergence("ReverseKL"))
@@ -98,6 +101,7 @@ power_divergence <- function (alpha, specialized = TRUE) {
                     phi  = \(x) (x^(alpha + 1) - 1)     / (alpha * (alpha + 1)),
                     w1   = \(x) -alpha * x^(alpha + 1)  / (alpha * (alpha + 1)),
                     w2   = \(x) alpha^2 * x^(alpha + 1) / (alpha * (alpha + 1)),
+                    phi_deriv_inf = if (alpha < 0) 0 else Inf,
                     type = "power")
 }
 
@@ -215,6 +219,9 @@ PhiDivergence <- R6Class(
     #' @field phi_2nd_deriv_at_1 value of \eqn{\phi''(1)}
     phi_2nd_deriv_at_1 = NULL,
 
+    #' @field phi_deriv_inf value of \eqn{\phi'(\infty)}
+    phi_deriv_inf = NULL,
+
     #' @field lambda_neq_1 whether \eqn{\lambda \neq 1}
     lambda_neq_1 = NULL,
 
@@ -227,17 +234,19 @@ PhiDivergence <- R6Class(
     #'   and satisfy \eqn{\phi(1) = 1}, \eqn{\lim_{t \to 0^+} \phi(t) = \phi(0)}.
     #' @param w1 function to evaluate \eqn{\phi(x) - x \phi'(x)}
     #' @param w2 function to evaluate \eqn{\phi(x) - x \phi'(x) + x^2 \phi''(x)}
+    #' @param phi_deriv_inf the value of \eqn{\phi'(\infty)} (can be `Inf`).
     #' @param lambda the model density exponent
     #' @param type a type description for this divergence
     #' @importFrom stringr str_to_lower
     #' @importFrom rlang abort
-    initialize = \(name, phi, w1, w2, lambda = 1, type) {
+    initialize = \(name, phi, w1, w2, phi_deriv_inf, lambda = 1, type = 'user-defined') {
       self$name <- name
 
       self$phi <- match.fun(phi)
       self$w1 <- match.fun(w1)
       self$w2 <- match.fun(w2)
       self$lambda <- as.numeric(lambda[[1]])
+      self$phi_deriv_inf <- as.numeric(phi_deriv_inf[[1]])
       lambda_neq_1 <- isTRUE(abs(self$lambda - 1) > .Machine$double.eps)
 
       if (!missing(type)) {
@@ -282,7 +291,8 @@ PhiDivergence <- R6Class(
     type = 'hd',
     phi  = \(x) 1 - sqrt(x),
     w1   = \(x) -0.5 * sqrt(x),  # + 1 for w1 AND w2 does not change the integral (Bartlett)
-    w2   = \(x) -0.25 * sqrt(x)) # + 1 for w1 AND w2 does not change the integral (Bartlett)
+    w2   = \(x) -0.25 * sqrt(x),
+    phi_deriv_inf = 0)
 
 .phi_divergence_register$negativeexponential <-
   .phi_divergence_register$ned <- PhiDivergence$new(
@@ -290,7 +300,8 @@ PhiDivergence <- R6Class(
   type = 'ned',
   phi  = \(x) expm1(1 - x),
   w1   = \(x) (x + 1)       * exp(1 - x), # - 1 for w1 AND w2 does not change the integral (Bartlett)
-  w2   = \(x) (1 + x + x^2) * exp(1 - x))
+  w2   = \(x) (1 + x + x^2) * exp(1 - x),
+  phi_deriv_inf = 0)
 
 .phi_divergence_register$kl <-
   .phi_divergence_register$kullbackleibler <- PhiDivergence$new(
@@ -303,7 +314,8 @@ PhiDivergence <- R6Class(
       x
     },
     w1   = \(x) -x,
-    w2   = \(x) 0)
+    w2   = \(x) 0,
+    phi_deriv_inf = Inf)
 
 .phi_divergence_register$reversekl <-
   .phi_divergence_register$revkl <-
@@ -312,6 +324,7 @@ PhiDivergence <- R6Class(
     type = 'rkl',
     phi  = \(x) -log(x),
     w1   = \(x) 1 - log(x),
-    w2   = \(x) 2 - log(x))
+    w2   = \(x) 2 - log(x),
+    phi_deriv_inf = 0)
 
 lockEnvironment(.phi_divergence_register, bindings = TRUE)

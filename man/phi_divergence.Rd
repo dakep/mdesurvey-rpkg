@@ -6,7 +6,7 @@
 \alias{power_divergence}
 \title{Get or Define a Phi Divergence}
 \usage{
-phi_divergence(name, phi, w1, w2, lambda = 1)
+phi_divergence(name, ...)
 
 alpha_divergence(alpha, specialized = TRUE)
 
@@ -16,12 +16,9 @@ power_divergence(alpha, specialized = TRUE)
 \item{name}{name of the phi divergence.
 If missing, list all currently known divergences.}
 
-\item{phi, w1, w2}{the generator of the phi divergence and function of its derivatives.
-Passed on to initialize a new \link{PhiDivergence}.}
-
-\item{lambda}{the exponent for (model density) \eqn{q}.
-If different from 1, care must be taken that \eqn{D_{\phi,\lambda}} is a valid
-divergence!}
+\item{...}{passed on to initialize a new \link{PhiDivergence}.
+Note that if the exponent for (model density) \eqn{q} is different from 1
+care must be taken that \eqn{D_{\phi,\lambda}} is a valid divergence!}
 
 \item{alpha}{value for the \eqn{\alpha} power parameter.}
 

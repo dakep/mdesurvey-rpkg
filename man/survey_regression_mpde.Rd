@@ -8,12 +8,13 @@ Survey Designs}
 survey_regression_mpde(
   x,
   design,
-  initial,
+  initial_coefs,
+  initial_var,
   family,
   divergence = "HD",
   na.rm = FALSE,
   integration_subdivisions = 256,
-  bw,
+  bw = bw.nrd,
   kernel = c("epanechnikov", "triangular", "rectangular", "biweight"),
   optim_method = "Nelder-Mead",
   optim_control = list()
@@ -25,8 +26,10 @@ The objects are first looked up in the provided \code{design}, then in the calli
 
 \item{design}{the survey design created by \code{\link[survey:svydesign]{survey::svydesign()}} and friends.}
 
-\item{initial}{an initial estimate for the parameters.
-If the vector has names, those will be used to match the elements of \code{x}.}
+\item{initial_coefs}{an initial estimate for the regression coefficients.
+If the vector has names, those will be used to match the covariates in the formula \code{x}.}
+
+\item{initial_var}{an initial estimate for the variance component.}
 
 \item{family}{either the name of a known model family, or a
 model family as returned by \code{\link[=model_family]{model_family()}}.}
@@ -38,9 +41,11 @@ phi divergence as returned by \code{\link[=phi_divergence]{phi_divergence()}}.}
 should be omitted.}
 
 \item{integration_subdivisions}{number of partitions to divide the domain of \eqn{\hat f()}
-for Gauss-Kronrod quadrature.}
+for Gaussian quadrature.}
 
-\item{bw}{bandwidth for the HT-adjusted KDE. Uses \code{\link[stats:bandwidth]{stats::bw.nrd()}} as default.}
+\item{bw}{bandwidth for the HT-adjusted KDE. Either a scalar bandwidth (not advised)
+used for all groups, or (the name of) a function which will be used to cmpute the
+bandwidth separately in each group. Uses \code{\link[stats:bandwidth]{stats::bw.nrd()}} as default.}
 
 \item{kernel}{Name of the kernel used in the HT-adjusted KDE.}
 
@@ -48,7 +53,7 @@ for Gauss-Kronrod quadrature.}
 }
 \description{
 Compute the survey MPDE for the mean regression parameters under a user-specified continuous
-model for the conditional distribution \eqn{Y \mid X = x}.
+model for the conditional distribution \eqn{Y \mid X = x} for \strong{discrete} \eqn{X}.
 }
 \seealso{
 Other Minimum Phi-Divergence Estimator: 

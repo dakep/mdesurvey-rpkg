@@ -252,8 +252,9 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
     divergence_int = \(params) {
       params[] <- family$inv_trans(params)
       f_theta <- family$dfun(gkpts[, "int_x"], params = params, log = FALSE)
+      singular_pts <- which(f_theta < .Machine$double.eps)
       integrand <- divergence$phi(gkpts[, "f_hat"] / f_theta) * f_theta
-      integrand[f_theta < .Machine$double.eps] <- 0
+      integrand[singular_pts] <- gkpts[singular_pts, "f_hat"] * divergence$phi_deriv_inf
       int_val <- crossprod(gkpts[, "int_wgt"], integrand) |>
         drop()
 
@@ -261,6 +262,14 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
         gap_const * diff(family$pfun(gaps[, i], params = params))
       }) |>
         sum()
+
+      if (length(singular_pts) == length(f_theta) && gap_contrib < .Machine$double.eps) {
+        # f_theta is non-zero only in between the Gauss evaluation points
+        # (i.e., the actual support of f_theta is so much smaller than the support of f_hat),
+        # hence we're unable to evaluate the integral, but the densities are obviously
+        # very different.
+        return(Inf)
+      }
 
       int_val + gap_contrib
     },

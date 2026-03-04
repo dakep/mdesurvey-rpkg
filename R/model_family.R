@@ -17,7 +17,8 @@ model_family <- function (name, ...) {
   } else if (is.character(name)) {
     if (exists(str_to_lower(name), where = .model_family_register)) {
       if (dots_n(...) > 0L) {
-        abort(sprintf("Model family with name %s exists. In this case ... must be empty!"))
+        abort(sprintf("Model family with name %s exists. In this case ... must be empty!",
+                      name))
       }
 
       return(.model_family_register[[str_to_lower(name)]])

@@ -23,6 +23,8 @@ A class to encapsulate generalized phi divergences.
 
 \item{\code{phi_2nd_deriv_at_1}}{value of \eqn{\phi''(1)}}
 
+\item{\code{phi_deriv_inf}}{value of \eqn{\phi'(\infty)}}
+
 \item{\code{lambda_neq_1}}{whether \eqn{\lambda \neq 1}}
 }
 \if{html}{\out{</div>}}
@@ -41,7 +43,15 @@ A class to encapsulate generalized phi divergences.
 \subsection{Method \code{new()}}{
 Define a new phi divergence.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{PhiDivergence$new(name, phi, w1, w2, lambda = 1, type)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{PhiDivergence$new(
+  name,
+  phi,
+  w1,
+  w2,
+  phi_deriv_inf,
+  lambda = 1,
+  type = "user-defined"
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -56,6 +66,8 @@ and satisfy \eqn{\phi(1) = 1}, \eqn{\lim_{t \to 0^+} \phi(t) = \phi(0)}.}
 \item{\code{w1}}{function to evaluate \eqn{\phi(x) - x \phi'(x)}}
 
 \item{\code{w2}}{function to evaluate \eqn{\phi(x) - x \phi'(x) + x^2 \phi''(x)}}
+
+\item{\code{phi_deriv_inf}}{the value of \eqn{\phi'(\infty)} (can be \code{Inf}).}
 
 \item{\code{lambda}}{the model density exponent}
 
