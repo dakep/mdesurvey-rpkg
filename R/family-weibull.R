@@ -68,10 +68,12 @@ Weibull <- ModelFamily$new(
 
     c(shape = k_est, scale = lambda_est)
   },
-  reparameterize_from_mv = \(mean, var) {
+  # For the Weibull model, the nuisance parameter is the scale (standard deviation)
+  nuisance_names = 'var',
+  parameters_from_mean_par = \(mean, nuisance) {
     tryCatch({
-      cvsq <- (var / mean^2 + 1)
-      k0 <- (sqrt(var) / mean)^-1.086
+      cvsq <- (nuisance / mean^2 + 1)
+      k0 <- (sqrt(nuisance) / mean)^-1.086
 
       shape_sol <- tryCatch({
         uniroot(f = \(k) {
@@ -93,10 +95,13 @@ Weibull <- ModelFamily$new(
       c(shape = NA_real_, scale = NA_real_)
     })
   },
-  reparameterize_to_mv <- function (params) {
+  mean_par = \(params) {
     c(mean = params[['scale']] * gamma(1 + 1 / params[['shape']]),
-      var =  params[['scale']]^2 * (gamma(1 + 2 / params[['shape']]) -
+      var  =  params[['scale']]^2 * (gamma(1 + 2 / params[['shape']]) -
                                       gamma(1 + 1 / params[['shape']])^2))
+  },
+  jacobian_mean_par_mapping = \(mean, nuisance) {
+    matrix(c(NA_real_, NA_real_, NA_real_, NA_real_), ncol = 2)
   }
 )
 

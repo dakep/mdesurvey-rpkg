@@ -7,10 +7,11 @@
 #' @param x a formula or matrix specifying the linear model.
 #'   The objects are first looked up in the provided `design`, then in the calling environment.
 #' @param design the survey design created by [survey::svydesign()] and friends.
-#' @param initial an initial estimate for the regression coefficients and the variance component.
-#'   The variance component must have name `".var"` and the other names are used to match
-#'   the covariates in the formula `x`
-#' @param initial_var an initial estimate for the variance component.
+#' @param initial a list with two components:
+#'   `coef` with the initial estimates for the regression coefficients and
+#'   `nuisance` with the initial values for the nuisance components.
+#'   The family's `nuisance_name` has information about the nuisance parameters for the
+#'   respective model family.
 #' @param family either the name of a known model family, or a
 #'   model family as returned by [model_family()].
 #' @param divergence either the name of a known phi divergence, or a
@@ -82,12 +83,15 @@ survey_regression_mpde <- function (x,
   grp <- apply(xmat, 1, paste, collapse = '|') |>
     unname()
 
+  tot_wgts <- sum(weights(design))
   grouped <- split(seq_along(y), grp) |>
     lapply(\(i) {
       list(y    = y[i],
-           wgts = weights(design)[i],
+           design = subset_svydesign(design, i),
+           prop = sum(weights(design)[i]) / tot_wgts,
            x    = xmat[i[[1]], ])
-    })
+    }) |>
+    unname()
 
 
   bwf <- if (missing(bw) || is.null(bw)) {
@@ -100,44 +104,53 @@ survey_regression_mpde <- function (x,
     }
   }
 
-  mpd_ints <- lapply(grouped, \(subset) {
-    bw <- bwf(subset$y)
-    c(phidiv_gauss_quadrature(subset$y,
-                              wgts = subset$wgts,
+  grouped <- lapply(grouped, \(gr) {
+    gr$bw <- bwf(gr$y)
+    c(gr,
+      phidiv_gauss_quadrature(gr$y,
+                              wgts = weights(gr$design),
                               divergence = divergence,
                               family = family,
-                              bandwidth = bw,
+                              bandwidth = gr$bw,
                               kernel = kernel,
-                              n_subdivisions = integration_subdivisions),
-      list(x = subset$x))
+                              n_subdivisions = integration_subdivisions))
   })
 
-  if (missing(initial) || is.null(initial)) {
-    grp_init <- vapply(grouped, FUN.VALUE = numeric(2), FUN = \(subset) {
-      subset_init <- family$initial(subset$y, svydesign(~ 1, weights = ~ wgts,
-                                                        data = data.frame(wgts = subset$wgts)))
-      family$reparameterize_to_mv(subset_init)
+  initial_params <- if (missing(initial) || is.null(initial)) {
+    grp_init <- vapply(grouped, FUN.VALUE = numeric(2), FUN = \(gr) {
+      subset_init <- family$initial(gr$y, gr$design)
+      family$mean_par(subset_init)
     })
 
     # Use the geometric mean of the group variances
-    initial <- c(.var = mean(log(grp_init['var', ])),
-                 lm.fit(x = do.call(rbind, lapply(grouped, `[[`, 'x')),
-                        y = grp_init['mean', ])$coefficients)
-  } else if (length(initial['.var']) != 1) {
-    abort("Initial estimate must contain entry for the variance under `.var`")
+    c(rowMeans(log(grp_init[-1, , drop = FALSE])),
+      lm.fit(x = do.call(rbind, lapply(grouped, `[[`, 'x')),
+             y = grp_init['mean', ])$coefficients)
+  } else if (length(initial) != 2) {
+    if (is.null(initial$coef)) {
+      abort("`initial` does not contain information about the coefficients")
+    }
+    if (length(family$nuisance_names) > 0L && is.null(initial$nuisance)) {
+      abort(paste("`initial` does not contain information about the nuisance parameters",
+                  paste(family$nuisance_names, collapse = ", ")))
+    }
+  } else if (!is.null(names(initial$coefs))) {
+    c(as.numeric(initial$nuisance), as.numeric(initial$coefs[colnames(xmat)]))
   } else {
-    initial <- c(.var = log(initial[['.var']]),
-                 initial[names(initial) != '.var'])
+    c(as.numeric(initial$nuisance), as.numeric(initial$coefs))
   }
-
-  mpd_est <- optim(initial,
+  names(initial_params) <- NULL
+  nuisance_components <- seq_along(family$nuisance_names)
+  mean_components <- length(family$nuisance_names) + seq_len(ncol(xmat))
+  mpd_est <- optim(initial_params,
                    fn = \(regpars) {
-                     vapply(mpd_ints, FUN.VALUE = numeric(1), FUN = \(gr) {
-                       mean <- drop(gr$x %*% regpars[-1])
-                       gr_params <- family$reparameterize_from_mv(mean, var = exp(regpars[[1]])) |>
-                         family$trans()
+                     vapply(grouped, FUN.VALUE = numeric(1), FUN = \(gr) {
+                       mean <- drop(gr$x %*% regpars[mean_components])
+                       # We need to transform here because the `divergence_int()` back-transforms!
+                       gr_params <- family$trans(
+                         family$parameters_from_mean_par(mean, exp(regpars[nuisance_components])))
                        if (all(is.finite(gr_params))) {
-                         gr$divergence_int(gr_params)
+                         gr$prop * gr$divergence_int(gr_params)
                        } else {
                          Inf
                        }
@@ -152,13 +165,31 @@ survey_regression_mpde <- function (x,
                  mpd_est$convergence, paste0('', mpd_est$message)))
   }
 
-  initial[['.var']] <- exp(initial[['.var']])
-  reg_coefs <- mpd_est$par[-1L]
-  var_est <- exp(mpd_est$par[[1L]])
+  initial_params[nuisance_components] <- exp(initial_params[nuisance_components])
+  names(initial_params) <- c(family$nuisance_names, colnames(xmat))
+  reg_coefs <- mpd_est$par[mean_components]
+  names(reg_coefs) <- colnames(xmat)
+  nuisance_est <- exp(mpd_est$par[nuisance_components])
+  names(nuisance_est) <- family$nuisance_names
+
+  # Covariance matrix estimation
+  vapply(grouped, FUN.VALUE = numeric(1), FUN = \(gr) {
+    mean <- drop(gr$x %*% reg_coefs)
+    estimates <- family$parameters_from_mean_par(mean, nuisance_est) |>
+      setNames(family$parameter_names)
+    A_est <- gr$sandwich_cov_A(estimates)
+    score <- family$raw_scores(gr$y, estimates)
+    jac <- family$jacobian_mean_par_mapping(mean, nuisance_est)
+    score_jac <- score %*% jac
+    colnames(score_jac) <- c(".mean", family$nuisance_names)
+
+    score_reg <- outer(score_jac[, 1L], gr$x) |>
+      cbind(score_jac[, -1, drop = FALSE])
+  })
 
   structure(
     list(coefficients   = reg_coefs,
-         variance       = var_est,
+         nuisance       = nuisance_est,
          family         = family,
          divergence     = divergence,
          mpd            = mpd_est$value,
@@ -166,4 +197,56 @@ survey_regression_mpde <- function (x,
          optimizer_code = mpd_est$convergence,
          optimizer_msg  = mpd_est$message),
     class = 'survey_reg_mde')
+}
+
+subset_svydesign <- function (x, i) {
+  d <- x[i, ]
+  d$fpc$sampsize <- d$fpc$sampsize[i, ]
+  d$dcheck <- lapply(d$dcheck, \(dc) {
+    dc$id <- dc$id[i]
+    dc$dcheck <- dc$dcheck[i, i]
+    dc
+  })
+  d
+}
+
+#' @importFrom survey svymean
+#' @importFrom stats vcov as.formula
+#' @importFrom rlang warn
+reg_mpde_covest <- function (x, estimates, integrator, family, design, divergence) {
+  A_est <- integrator$sandwich_cov_A(estimates)
+  score <- family$raw_scores(x, estimates)
+  design$variables <- data.frame(score = score)
+  fmla <- as.formula(paste0("~`", paste0(colnames(design$variables), collapse = "`+`"), "`"))
+  design_vcov <- vcov(svymean(fmla, design = design))
+  finf <- family$fisher_inf(estimates)
+  neff <- diag(finf) / diag(design_vcov)
+
+  covest <- tryCatch({
+    (solve(A_est, design_vcov) %*% solve(A_est) * divergence$phi_2nd_deriv_at_1^2) |>
+      structure(type = "sandwich")
+  }, error = \(cnd) {
+    # Compute the model-based estimator instead.
+    warn("Sandwich covariance estimate is singular. Computing model-based estimate instead.",
+         parent = cnd)
+
+    finf_inv <- tryCatch(solve(finf),
+                         error = \(cnd) {
+                           # Try a Moore-Penrose pseudo-inverse
+                           tryCatch(pseudo_inverse(finf),
+                                    error = \(cnd) {
+                                      warn("Fisher Information matrix is not positive semi-definite.",
+                                           parent = cnd)
+                                      NULL
+                                    })
+                         })
+
+    (finf_inv / outer(sqrt(neff), sqrt(neff))) |>
+      structure(type = "model")
+  })
+
+  dimnames(covest) <- list(family$parameter_names, family$parameter_names)
+  names(neff) <- family$parameter_names
+  list(cov = covest,
+       neff = neff)
 }

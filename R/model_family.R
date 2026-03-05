@@ -82,16 +82,25 @@ ModelFamily <- R6Class(
     #'   `function(x, design) -> vector of initial estimates`
     initial = NULL,
 
-    #' @field reparameterize_from_mv function to get the family's natural parameters from
+    #' @field nuisance_names name(s) of the nuisance parameter(s) in the mean/nuisance
+    #'   parameterization.
+    nuisance_names = NULL,
+
+    #' @field parameters_from_mean_par function to get the family's natural parameters from
     #'   a mean & variance parameterization.
     #'   May not be well defined, in which case the function should return a parameter vector
     #'   of NA's.
-    reparameterize_from_mv = NULL,
+    parameters_from_mean_par = NULL,
 
-    #' @field reparameterize_to_mv function to get the mean and variance from the
+    #' @field mean_par function to get the mean and variance from the
     #'   family's parameters.
     #'   May not be well defined, in which case the undefined moments should be NA.
-    reparameterize_to_mv = NULL,
+    mean_par = NULL,
+
+    #' @field jacobian_mean_par_mapping function to compute the Jacobian matrix of the mapping
+    #' from the mean/nuisance parameters to the family's natural parameters
+    #' \eqn{q(\mu, \gamma) \to \theta}
+    jacobian_mean_par_mapping = NULL,
 
     #' @description
     #' Define a new model family.
@@ -121,15 +130,20 @@ ModelFamily <- R6Class(
     #'   `fisher_inf(params) -> Fisher Information (numeric matrix)`
     #' @param initial function to get initial estimates.
     #'   `function(x, design) -> vector of initial estimates`
-    #' @param reparameterize_from_mv function to get the
-    #'   family's natural parameters from a mean & variance parameterization.
-    #'   May not be well defined, in which case the functions should return a parameter vector
+    #' @param nuisance_names name(s) of the nuisance parameter(s) in the mean/nuisance
+    #'   parameterization.
+    #' @param parameters_from_mean_par function to get the
+    #'   family's natural parameters from a mean & nuisance parameterization.
+    #'   May not be well defined, in which case the function should return a parameter vector
     #'   of NA's.
-    #' @param reparameterize_to_mv function to get the mean and variance from the
-    #'   family's parameters.
-    #'   May not be well defined, in which case the undefined moments should be NA.
+    #' @param mean_par function to get the mean and nuisance parameters from the family's parameters.
+    #'   May not be well defined, in which case the undefined parameters should be NA.
+    #' @param jacobian_mean_par_mapping function to compute the Jacobian matrix of the
+    #' mapping from the mean/nuisance parameters to the family's natural parameters.
+    #' \eqn{q(\mu, \gamma) \to \theta}
     initialize = \ (name, parameter_names, range, dfun, pfun, raw_scores, hessian, fisher_inf,
-                    trans, inv_trans, initial, reparameterize_from_mv, reparameterize_to_mv) {
+                    trans, inv_trans, initial,
+                    nuisance_names, parameters_from_mean_par, mean_par, jacobian_mean_par_mapping) {
       self$name <- name
       self$parameter_names <- parameter_names
       if (is.null(dim(range))) {
@@ -145,17 +159,18 @@ ModelFamily <- R6Class(
       self$inv_trans <- match.fun(inv_trans)
       self$initial <- match.fun(initial)
 
-      self$reparameterize_to_mv <- match.fun(reparameterize_to_mv)
-      self$reparameterize_from_mv <- if (missing(reparameterize_from_mv)) {
+      self$mean_par <- match.fun(mean_par)
+      self$jacobian_mean_par_mapping <- match.fun(jacobian_mean_par_mapping)
+      self$nuisance_names <- as.character(nuisance_names)
+      self$parameters_from_mean_par <- if (missing(parameters_from_mean_par)) {
         \(...) {
-          params <- rep.int(NA_real_, length(self$reparameterize_from_mv))
+          params <- rep.int(NA_real_, length(self$parameters_from_mean_par))
           names(params) <- self$parameter_names
           params
         }
       } else {
-        match.fun(reparameterize_from_mv)
+        match.fun(parameters_from_mean_par)
       }
-
     },
 
     #' @description

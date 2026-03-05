@@ -18,7 +18,7 @@ test_that("Gamma Regression", {
                  x3 = c(a = 0, b = 15000, c = 40000)),
     cor = 0.8,
     ranf = \(n, mean) {
-      params <- gamma_family$reparameterize_from_mv(mean, var = gamma_var)
+      params <- gamma_family$parameters_from_mean_par(mean, var = gamma_var)
       rgamma(n, shape = params[['shape']], scale = params[['scale']])
     })
 
@@ -49,7 +49,7 @@ test_that("Normal Regression", {
                  x3 = c(a = 0, b = 15000, c = 40000)),
     cor = 0.8,
     ranf = \(n, mean) {
-      params <- normal_family$reparameterize_from_mv(mean, var = var)
+      params <- normal_family$parameters_from_mean_par(mean, var = var)
       rnorm(n, mean = params[['mean']], sd = params[['sd']])
     })
 

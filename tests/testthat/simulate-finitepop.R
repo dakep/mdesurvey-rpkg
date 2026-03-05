@@ -56,7 +56,6 @@ simulate_finitepop_lm <- function (size, terms, cor, ranf) {
       }) |>
         sum()
       mean[[1]] <- mean[[1]] + intercept
-
       fp <- simulate_finitepop(size = nrow(sdf), cor = cor,
                                ranf = \(n) ranf(n, mean))
 
@@ -122,13 +121,16 @@ stratified_sampling <- function (n, strata, finite_pop, sampling = c('pps', 'srs
       variance <- 'HT'
     }
 
-    survey::svydesign(ids          = ~ 1,
-                      probs        = pps_incl_prob,
-                      pps          = pps_info,
-                      strata       = strata,
-                      check.strata = FALSE,
-                      data         = finite_pop[sample, ])
-
+    design <- survey::svydesign(ids          = ~ 1,
+                                probs        = pps_incl_prob,
+                                pps          = pps_info,
+                                variance     = variance,
+                                strata       = strata,
+                                check.strata = FALSE,
+                                data         = finite_pop[sample, ])
+    # With PPS, the survey package expects a vector for the strata, not a data frame
+    design$strata <- design$strata[, 1L, drop = TRUE]
+    design
   } else if (identical(sampling, 'srs')) {
     # SRS-WOR
     survey::svydesign(ids    = ~ 1,

@@ -43,14 +43,30 @@ and then the upper-triagonal elements in row-first fashion (as returned by \code
 \item{\code{initial}}{function to get initial estimates.
 \verb{function(x, design) -> vector of initial estimates}}
 
-\item{\code{reparameterize_from_mv}}{function to get the family's natural parameters from
+\item{\code{nuisance_names}}{name(s) of the nuisance parameter(s) in the mean/nuisance
+parameterization.}
+
+\item{\code{parameters_from_mean_par}}{function to get the family's natural parameters from
 a mean & variance parameterization.
 May not be well defined, in which case the function should return a parameter vector
 of NA's.}
 
-\item{\code{reparameterize_to_mv}}{function to get the mean and variance from the
+\item{\code{mean_par}}{function to get the mean and variance from the
 family's parameters.
 May not be well defined, in which case the undefined moments should be NA.}
+
+\item{\code{jacobian_mv}}{function to compute the Jacobian matrix of the mapping from the
+mean/nuisance parameters to the family's natural parameters.
+\eqn{q(\mu, \gamma) \to \theta}}
+}
+\if{html}{\out{</div>}}
+}
+\section{Active bindings}{
+\if{html}{\out{<div class="r6-active-bindings">}}
+\describe{
+\item{\code{jacobian_mv}}{function to compute the Jacobian matrix of the mapping from the
+mean/nuisance parameters to the family's natural parameters.
+\eqn{q(\mu, \gamma) \to \theta}}
 }
 \if{html}{\out{</div>}}
 }
@@ -80,8 +96,10 @@ Define a new model family.
   trans,
   inv_trans,
   initial,
-  reparameterize_from_mv,
-  reparameterize_to_mv
+  nuisance_names,
+  parameters_from_mean_par,
+  mean_par,
+  jacobian_mean_par_mapping
 )}\if{html}{\out{</div>}}
 }
 
@@ -123,14 +141,20 @@ and the other direction (\code{inv_trans()}).}
 \item{\code{initial}}{function to get initial estimates.
 \verb{function(x, design) -> vector of initial estimates}}
 
-\item{\code{reparameterize_from_mv}}{function to get the
-family's natural parameters from a mean & variance parameterization.
-May not be well defined, in which case the functions should return a parameter vector
+\item{\code{nuisance_names}}{name(s) of the nuisance parameter(s) in the mean/nuisance
+parameterization.}
+
+\item{\code{parameters_from_mean_par}}{function to get the
+family's natural parameters from a mean & nuisance parameterization.
+May not be well defined, in which case the function should return a parameter vector
 of NA's.}
 
-\item{\code{reparameterize_to_mv}}{function to get the mean and variance from the
-family's parameters.
-May not be well defined, in which case the undefined moments should be NA.}
+\item{\code{mean_par}}{function to get the mean and nuisance parameters from the family's parameters.
+May not be well defined, in which case the undefined parameters should be NA.}
+
+\item{\code{jacobian_mean_par_mapping}}{function to compute the Jacobian matrix of the
+mapping from the mean/nuisance parameters to the family's natural parameters.
+\eqn{q(\mu, \gamma) \to \theta}}
 }
 \if{html}{\out{</div>}}
 }

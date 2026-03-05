@@ -39,16 +39,22 @@ Gamma <- ModelFamily$new(
 
     c(shape = shape$root, scale = wmx / shape$root)
   },
-  reparameterize_from_mv <- function (mean, var) {
-    if (!isTRUE(mean > .Machine$double.eps) || !isTRUE(var > .Machine$double.eps)) {
+  # For the Gamma model, the nuisance parameter is the scale (standard deviation)
+  nuisance_names = 'sd',
+  parameters_from_mean_par = \(mean, nuisance) {
+    if (!isTRUE(mean > .Machine$double.eps) || !isTRUE(nuisance > .Machine$double.eps)) {
       c(shape = NA_real_, scale = NA_real_)
     } else {
-      c(shape = mean^2 / var, scale = var / mean)
+      c(shape = mean^2 / nuisance^2, scale = nuisance^2 / mean)
     }
   },
-  reparameterize_to_mv <- function (params) {
+  mean_par = \ (params) {
     c(mean = prod(params),
-      var  = params[['shape']] * params[['scale']]^2)
+      sd   = sqrt(params[['shape']]) * params[['scale']])
+  },
+  jacobian_mean_par_mapping = \ (mean, nuisance) {
+    matrix(c(2 * mean / nuisance^2, -(nuisance/mean)^2,
+             -2 * mean^2 / nuisance^3, 2 * nuisance / mean), ncol = 2)
   }
 )
 

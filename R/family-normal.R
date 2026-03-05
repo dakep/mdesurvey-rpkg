@@ -32,11 +32,20 @@ Normal <- ModelFamily$new(
     c(mean = svymean(x, design = design),
       sd   = sqrt(svyvar(x, design = design)))
   },
-  reparameterize_from_mv <- function (mean, var) {
-    c(mean = mean, sd = sqrt(var))
+  # For the Normal model, the nuisance parameter is the scale (standard deviation)
+  nuisance_names = 'sd',
+  parameters_from_mean_par = \(mean, nuisance) {
+    if (isTRUE(var > .Machine$double.eps)) {
+      c(mean = mean, sd = nuisance)
+    } else {
+      c(mean = mean, sd = NA_real_)
+    }
   },
-  reparameterize_to_mv <- function (params) {
-    c(mean = params[['mean']], var = params[['sd']]^2)
+  mean_par = \(params) {
+    c(mean = params[['mean']], nuisance = params[['sd']])
+  },
+  jacobian_mean_par_mapping = \(mean, nuisance) {
+    matrix(c(1, 0, 0, 1), ncol = 2)
   }
 )
 
