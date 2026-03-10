@@ -29,10 +29,10 @@ model_family <- function (name, ...) {
   abort("`name` must be a character")
 }
 
-
 #' @title ModelFamily Class
 #' @description A class to encapsulate statistical model families for survey analysis.
 #' @importFrom R6 R6Class
+#' @include link-functions.R
 ModelFamily <- R6Class(
   classname = "ModelFamily",
   public = list(
@@ -102,6 +102,10 @@ ModelFamily <- R6Class(
     #' \eqn{q(\mu, \gamma) \to \theta}
     jacobian_mean_par_mapping = NULL,
 
+    #' @field default_link default link functions for the mean and scale components in a
+    #'   linear regression model
+    default_link = NULL,
+
     #' @description
     #' Define a new model family.
     #'
@@ -139,11 +143,14 @@ ModelFamily <- R6Class(
     #' @param mean_par function to get the mean and nuisance parameters from the family's parameters.
     #'   May not be well defined, in which case the undefined parameters should be NA.
     #' @param jacobian_mean_par_mapping function to compute the Jacobian matrix of the
-    #' mapping from the mean/nuisance parameters to the family's natural parameters.
-    #' \eqn{q(\mu, \gamma) \to \theta}
+    #'   mapping from the mean/nuisance parameters to the family's natural parameters.
+    #' @param default_link default link functions, a list of [Link] instances.
+    #'
+    #' @importFrom rlang abort
     initialize = \ (name, parameter_names, range, dfun, pfun, raw_scores, hessian, fisher_inf,
                     trans, inv_trans, initial,
-                    nuisance_names, parameters_from_mean_par, mean_par, jacobian_mean_par_mapping) {
+                    nuisance_names, parameters_from_mean_par, mean_par, jacobian_mean_par_mapping,
+                    default_link) {
       self$name <- name
       self$parameter_names <- parameter_names
       if (is.null(dim(range))) {
@@ -162,6 +169,9 @@ ModelFamily <- R6Class(
       self$mean_par <- match.fun(mean_par)
       self$jacobian_mean_par_mapping <- match.fun(jacobian_mean_par_mapping)
       self$nuisance_names <- as.character(nuisance_names)
+
+      self$default_link <- .check_link(default_link, self$nuisance_names)
+
       self$parameters_from_mean_par <- if (missing(parameters_from_mean_par)) {
         \(...) {
           params <- rep.int(NA_real_, length(self$parameters_from_mean_par))

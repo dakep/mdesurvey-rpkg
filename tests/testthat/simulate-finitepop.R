@@ -36,7 +36,7 @@ simulate_finitepop <- function (size, cor, ranf) {
 #'   * `y` … the characteristic of interest
 #'   * `z` … the variable to base the inclusion weights on
 #'   * ...   all the terms from `terms`
-simulate_finitepop_lm <- function (size, terms, cor, ranf) {
+simulate_finitepop_lm <- function (size, terms, cor, ranf, link_inv = identity) {
   if (length(terms[[1]]) == 1L) {
     intercept <- terms[[1]]
     terms <- terms[-1]
@@ -55,7 +55,7 @@ simulate_finitepop_lm <- function (size, terms, cor, ranf) {
         unname(terms[[n]][sdf[[n]][[1]]])
       }) |>
         sum()
-      mean[[1]] <- mean[[1]] + intercept
+      mean[[1]] <- link_inv(mean[[1]] + intercept)
       fp <- simulate_finitepop(size = nrow(sdf), cor = cor,
                                ranf = \(n) ranf(n, mean))
 
@@ -114,7 +114,7 @@ stratified_sampling <- function (n, strata, finite_pop, sampling = c('pps', 'srs
       pps_info <- outer(pps_incl_prob, pps_incl_prob)
       diag(pps_info) <- pps_incl_prob
       pps_info <- survey::ppsmat(pps_info)
-      variance <- 'YG'
+      variance <- 'HT'
     } else {
       # Otherwise, use the Brewer approximation
       pps_info <- 'brewer'

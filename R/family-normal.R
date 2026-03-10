@@ -1,4 +1,4 @@
-#' @importFrom stats dgamma pgamma
+#' @importFrom stats dnorm pnorm
 #' @importFrom survey svymean svyvar
 #' @include model_family.R
 Normal <- ModelFamily$new(
@@ -34,15 +34,16 @@ Normal <- ModelFamily$new(
   },
   # For the Normal model, the nuisance parameter is the scale (standard deviation)
   nuisance_names = 'sd',
+  default_link   = link('identity', sd = 'log'),
   parameters_from_mean_par = \(mean, nuisance) {
-    if (isTRUE(var > .Machine$double.eps)) {
-      c(mean = mean, sd = nuisance)
+    if (isTRUE(nuisance[[1]] > .Machine$double.eps)) {
+      c(mean = mean, sd = nuisance[[1]])
     } else {
       c(mean = mean, sd = NA_real_)
     }
   },
   mean_par = \(params) {
-    c(mean = params[['mean']], nuisance = params[['sd']])
+    params
   },
   jacobian_mean_par_mapping = \(mean, nuisance) {
     matrix(c(1, 0, 0, 1), ncol = 2)

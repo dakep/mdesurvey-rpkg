@@ -41,11 +41,12 @@ Gamma <- ModelFamily$new(
   },
   # For the Gamma model, the nuisance parameter is the scale (standard deviation)
   nuisance_names = 'sd',
+  default_link   = link('log', sd = 'log'),
   parameters_from_mean_par = \(mean, nuisance) {
-    if (!isTRUE(mean > .Machine$double.eps) || !isTRUE(nuisance > .Machine$double.eps)) {
+    if (!isTRUE(mean > .Machine$double.eps) || !isTRUE(nuisance[[1]] > .Machine$double.eps)) {
       c(shape = NA_real_, scale = NA_real_)
     } else {
-      c(shape = mean^2 / nuisance^2, scale = nuisance^2 / mean)
+      c(shape = mean^2 / nuisance[[1]]^2, scale = nuisance[[1]]^2 / mean)
     }
   },
   mean_par = \ (params) {

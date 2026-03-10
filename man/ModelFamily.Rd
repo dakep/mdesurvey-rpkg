@@ -55,18 +55,12 @@ of NA's.}
 family's parameters.
 May not be well defined, in which case the undefined moments should be NA.}
 
-\item{\code{jacobian_mv}}{function to compute the Jacobian matrix of the mapping from the
-mean/nuisance parameters to the family's natural parameters.
+\item{\code{jacobian_mean_par_mapping}}{function to compute the Jacobian matrix of the mapping
+from the mean/nuisance parameters to the family's natural parameters
 \eqn{q(\mu, \gamma) \to \theta}}
-}
-\if{html}{\out{</div>}}
-}
-\section{Active bindings}{
-\if{html}{\out{<div class="r6-active-bindings">}}
-\describe{
-\item{\code{jacobian_mv}}{function to compute the Jacobian matrix of the mapping from the
-mean/nuisance parameters to the family's natural parameters.
-\eqn{q(\mu, \gamma) \to \theta}}
+
+\item{\code{default_link}}{default link functions for the mean and scale components in a
+linear regression model}
 }
 \if{html}{\out{</div>}}
 }
@@ -99,7 +93,8 @@ Define a new model family.
   nuisance_names,
   parameters_from_mean_par,
   mean_par,
-  jacobian_mean_par_mapping
+  jacobian_mean_par_mapping,
+  default_link
 )}\if{html}{\out{</div>}}
 }
 
@@ -153,8 +148,9 @@ of NA's.}
 May not be well defined, in which case the undefined parameters should be NA.}
 
 \item{\code{jacobian_mean_par_mapping}}{function to compute the Jacobian matrix of the
-mapping from the mean/nuisance parameters to the family's natural parameters.
-\eqn{q(\mu, \gamma) \to \theta}}
+mapping from the mean/nuisance parameters to the family's natural parameters.}
+
+\item{\code{default_link}}{default link functions, a list of \link{Link} instances.}
 }
 \if{html}{\out{</div>}}
 }

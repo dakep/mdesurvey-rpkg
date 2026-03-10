@@ -4,7 +4,7 @@
 #' @importFrom stats dweibull pweibull uniroot
 #' @importFrom survey svymean
 #' @importFrom rlang warn
-#' @include model_family.R
+#' @include model_family.R link-functions.R
 Weibull <- ModelFamily$new(
   name            = "Weibull",
   parameter_names = c("shape", "scale"),
@@ -68,12 +68,13 @@ Weibull <- ModelFamily$new(
 
     c(shape = k_est, scale = lambda_est)
   },
-  # For the Weibull model, the nuisance parameter is the scale (standard deviation)
+  # For the Weibull model, the nuisance parameter is the variance
   nuisance_names = 'var',
+  default_link   = link('log', var = 'log'),
   parameters_from_mean_par = \(mean, nuisance) {
     tryCatch({
-      cvsq <- (nuisance / mean^2 + 1)
-      k0 <- (sqrt(nuisance) / mean)^-1.086
+      cvsq <- (nuisance[[1]] / mean^2 + 1)
+      k0 <- (sqrt(nuisance[[1]]) / mean)^-1.086
 
       shape_sol <- tryCatch({
         uniroot(f = \(k) {
@@ -97,7 +98,7 @@ Weibull <- ModelFamily$new(
   },
   mean_par = \(params) {
     c(mean = params[['scale']] * gamma(1 + 1 / params[['shape']]),
-      var  =  params[['scale']]^2 * (gamma(1 + 2 / params[['shape']]) -
+      var  = params[['scale']]^2 * (gamma(1 + 2 / params[['shape']]) -
                                       gamma(1 + 1 / params[['shape']])^2))
   },
   jacobian_mean_par_mapping = \(mean, nuisance) {

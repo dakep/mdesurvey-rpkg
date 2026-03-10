@@ -9,8 +9,8 @@ survey_regression_mpde(
   x,
   design,
   initial,
-  initial_var,
   family,
+  link,
   divergence = "HD",
   na.rm = FALSE,
   integration_subdivisions = 256,
@@ -26,14 +26,19 @@ The objects are first looked up in the provided \code{design}, then in the calli
 
 \item{design}{the survey design created by \code{\link[survey:svydesign]{survey::svydesign()}} and friends.}
 
-\item{initial}{an initial estimate for the regression coefficients and the variance component.
-The variance component must have name \code{".var"} and the other names are used to match
-the covariates in the formula \code{x}}
-
-\item{initial_var}{an initial estimate for the variance component.}
+\item{initial}{a list with two components:
+\code{coef} with the initial estimates for the regression coefficients and
+\code{nuisance} with the initial values for the nuisance components.
+The family's \code{nuisance_name} has information about the nuisance parameters for the
+respective model family.
+The initial values must be on the scale of the link function!}
 
 \item{family}{either the name of a known model family, or a
 model family as returned by \code{\link[=model_family]{model_family()}}.}
+
+\item{link}{the link functions obtained with \code{\link[=link]{link()}} for the mean and nuisance components
+of the linear regression model.
+If missing, uses the default link for the family \code{family$default_link}.}
 
 \item{divergence}{either the name of a known phi divergence, or a
 phi divergence as returned by \code{\link[=phi_divergence]{phi_divergence()}}.}

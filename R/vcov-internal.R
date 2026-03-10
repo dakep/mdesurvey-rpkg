@@ -9,7 +9,7 @@
 #' @importFrom stats vcov coef
 #' @importFrom rlang abort
 #' @keywords internal
-.vcov <- function (object, type, n, enforce_type = FALSE) {
+.vcov <- function (object, type, n, enforce_type = FALSE, finf_inv) {
   if (!missing(type) && !is.null(type)) {
     if (identical(attr(object$cov, "type"), type)) {
       if (is.character(object$cov)) {
@@ -25,13 +25,17 @@
   if (missing(n) || is.null(n) || !is.numeric(n)) {
     n <- object$neff_kish
   }
-  finf <- object$family$fisher_inf(coef(object))
+
+  if (missing(finf_inv) || is.null(finf_inv)) {
+    finf_inv <- solve(object$family$fisher_inf(coef(object)))
+  }
+
   if (length(n) == 1L) {
-    solve(finf) / n
-  } else if (length(n) == nrow(finf)) {
-    solve(finf) / outer(sqrt(n), sqrt(n))
+    finf_inv / n
+  } else if (length(n) == nrow(finf_inv)) {
+    finf_inv / outer(sqrt(n), sqrt(n))
   } else {
     abort(sprintf("`n` must be either of length 1 or %d (= the number of parameters)",
-                  nrow(finf)))
+                  nrow(finf_inv)))
   }
 }

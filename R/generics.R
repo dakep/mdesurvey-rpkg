@@ -33,7 +33,7 @@ coef.survey_reg_mde <- function (object, ...) {
 #' @export
 sigma.survey_reg_mde <- function (object, ...) {
   check_dots_empty()
-  sqrt(object$variance)
+  object$nuisance
 }
 
 #' @details
@@ -48,7 +48,7 @@ sigma.survey_reg_mde <- function (object, ...) {
 #' @rdname generics
 #' @export
 vcov.survey_mde <- function (object, type = c("sandwich", "model"),
-                              n = c("score", "kish"), ...) {
+                             n = c("score", "kish"), ...) {
   check_dots_empty()
   type_missing <- missing(type)
   if (!is.numeric(n)) {
@@ -58,4 +58,37 @@ vcov.survey_mde <- function (object, type = c("sandwich", "model"),
                 object$nobs)
   }
   .vcov(object, type = match.arg(type), n = n, enforce_type = !type_missing)
+}
+
+#'
+#' @param which which components to include in the covariance matrix: only the regression
+#'   coefficients (`"regression"`), only the nuisance parameters (`"nuisance"`), or
+#'   all (`"all"`).
+#' @rdname generics
+#' @export
+vcov.survey_reg_mde <- function (object, type = c("sandwich", "model"),
+                                 which = c('regression', 'nuisance', 'all'),
+                                 n = c("score", "kish"), ...) {
+  check_dots_empty()
+  covmat_ind <- switch(match.arg(which),
+                       regression = seq_along(object$coefficients),
+                       nuisance   = length(object$coefficients) + seq_along(object$nuisance),
+                       seq_len(length(object$coefficients) + length(object$nuisance)))
+
+  type_missing <- missing(type)
+  if (!is.numeric(n)) {
+    n <- switch(match.arg(n),
+                score = object$neff_score,
+                kish  = object$neff_kish,
+                object$nobs)
+  }
+
+  if (length(n) == length(covmat_ind)) {
+    n <- c(n, rep.int(1, nrow(object$finf_inv) - length(n)))
+  }
+
+  # finf_inv <- object$finf_inv[covmat_ind, covmat_ind, drop = FALSE]
+  covmat <- .vcov(object, type = match.arg(type), n = n, enforce_type = !type_missing,
+                  finf_inv = object$finf_inv)
+  covmat[covmat_ind, covmat_ind, drop = FALSE]
 }

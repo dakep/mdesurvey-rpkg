@@ -6,6 +6,7 @@
 \alias{sigma.survey_reg_mde}
 \alias{vcov}
 \alias{vcov.survey_mde}
+\alias{vcov.survey_reg_mde}
 \title{Extract Information from Fitted Minimum Divergence Estimators}
 \usage{
 \method{coef}{survey_mde}(object, ...)
@@ -15,6 +16,14 @@
 \method{sigma}{survey_reg_mde}(object, ...)
 
 \method{vcov}{survey_mde}(object, type = c("sandwich", "model"), n = c("score", "kish"), ...)
+
+\method{vcov}{survey_reg_mde}(
+  object,
+  type = c("sandwich", "model"),
+  which = c("regression", "nuisance", "all"),
+  n = c("score", "kish"),
+  ...
+)
 }
 \arguments{
 \item{object}{an MDE object fitted to survey data}
@@ -25,6 +34,10 @@
 
 \item{n}{either how to estimate the effective sample size, or (if numeric) the
 sample size.}
+
+\item{which}{which components to include in the covariance matrix: only the regression
+coefficients (\code{"regression"}), only the nuisance parameters (\code{"nuisance"}), or
+all (\code{"all"}).}
 }
 \description{
 Methods to extract coefficient estimates and variance/covariance components from

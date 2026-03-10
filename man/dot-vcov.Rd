@@ -4,7 +4,7 @@
 \alias{.vcov}
 \title{Calculate Variance-Covariance Matrix for Minimum Divergence Estimators}
 \usage{
-.vcov(object, type, n, enforce_type = FALSE)
+.vcov(object, type, n, enforce_type = FALSE, finf_inv)
 }
 \arguments{
 \item{object}{a MDE fitted to survey data}

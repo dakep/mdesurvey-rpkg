@@ -355,6 +355,43 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
       }
 
       A_est
+    },
+
+    sandwich_effective_score = \(params, jacobian, rel_tol = 1e-12) {
+
+      # First evaluate the integral over the regions where both
+      # the KDE and the model density are positive.
+      scores <- drop(family$raw_scores(gkpts[, "int_x"], params = params) %*% jacobian[, 1L])
+      f_theta <- family$dfun(gkpts[, "int_x"], params = params, log = FALSE)
+      ratio <- gkpts[, "f_hat"] / f_theta
+      ratio[f_theta > .Machine$double.eps] <- 0
+
+      int_pos_region <- crossprod(gkpts[, "int_wgt"], f_theta * divergence$w1(ratio) * scores) |>
+        drop()
+
+      # Then evaluate the integral over the regions where the KDE is zero
+      # but the model density is positive.
+      w10 <- divergence$w1(0)
+      int_gap <- if (isTRUE(abs(w10) > 0)) {
+        seq_len(ncol(gaps)) |>
+          vapply(FUN.VALUE = numeric(1), FUN = \(gapi) {
+            integrate(lower = gaps[[1, gapi]],
+                      upper = gaps[[2, gapi]],
+                      subdivisions = n_subdivisions,
+                      f = \(xint) {
+                        scores <- drop(family$raw_scores(xint, params = params) %*% jacobian[, 1L])
+                        f_theta <- family$dfun(xint, params = params, log = FALSE)
+                        f_theta * w10 * scores
+                      },
+                      stop.on.error = FALSE,
+                      rel.tol = rel_tol)$value
+          }) |>
+          sum()
+      } else {
+        0
+      }
+
+      int_pos_region + int_gap
     }
   )
 }
