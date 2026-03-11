@@ -34,8 +34,9 @@ Gamma <- ModelFamily$new(
   initial = \(x, design) {
     wmx <- svymean(x, design = design)
     loglik_root <- log(wmx) - svymean(log(x), design = design)
+    # Note that 0.5 / a < log(a) - digamma(a) < 1 / a
     shape <- uniroot(\(a) log(a) - digamma(a) - loglik_root,
-                     interval = c(1e-6, max(x)))
+                     interval = c(0.4, 1.1) / loglik_root)
 
     c(shape = shape$root, scale = wmx / shape$root)
   },
