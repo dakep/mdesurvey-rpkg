@@ -27,8 +27,9 @@ simulate_finitepop <- function (size, cor, ranf) {
 #' @param size the number of units in the finite population
 #' @param terms a list of terms of the form
 #'   `list(intercept, var_name = c(level1 = coef1, level2 = coef2, ...), ...)`
-#'   The expected value for each unit is determined by the sum of the coefficients.
-#'   If first element in `terms` is a scalara, it treated as the intercept.
+#'   The expected value for each unit is determined by the inverse link applied
+#'   to the sum of the coefficients.
+#'   If first element in `terms` is a scalar, it is treated as the intercept.
 #' @param cor the correlation between the charateristic \eqn{Y} and the PPS variable \eqn{Z}
 #' @param ranf a function to generate random deviates from the superpopulation model given
 #'  the expected value.

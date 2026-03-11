@@ -305,17 +305,23 @@ survey_regression_mpde <- function (x,
     class = 'survey_reg_mde')
 }
 
-subset_svydesign <- function (x, i) {
-  d <- x[i, ]
-  if (!is.null(d$fpc)) {
-    d$fpc$sampsize <- d$fpc$sampsize[i, ]
+#' @importFrom methods is
+subset_svydesign <- function (design, i) {
+  if (!is(design, "survey.design2")) {
+    design$strata <- interaction(design$strata)
+    d <- design[i, ]
+    if (!is.null(d$fpc)) {
+      d$fpc$sampsize <- d$fpc$sampsize[i, ]
+    }
+    if (!is.null(d$dcheck)) {
+      d$dcheck <- lapply(d$dcheck, \(dc) {
+        dc$id <- dc$id[i]
+        dc$dcheck <- dc$dcheck[i, i]
+        dc
+      })
+    }
+    d
+  } else {
+    design[i, ]
   }
-  if (!is.null(d$dcheck)) {
-    d$dcheck <- lapply(d$dcheck, \(dc) {
-      dc$id <- dc$id[i]
-      dc$dcheck <- dc$dcheck[i, i]
-      dc
-    })
-  }
-  d
 }
