@@ -2,7 +2,7 @@
 #' @importFrom survey svymean svyvar
 #' @include model_family.R
 Normal <- ModelFamily$new(
-  name            = "Normal",
+  name            = "gaussian",
   parameter_names = c("mean", "sd"),
   trans           = \(params) { params[[2]] <- log(params[[2]]); params; },
   inv_trans       = \(u_params) { u_params[[2]] <- exp(u_params[[2]]); u_params; },
