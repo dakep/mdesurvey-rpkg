@@ -199,9 +199,10 @@ pseudo_inverse <- function (x) {
 #' @importFrom SparseGrid createSparseGrid
 #' @importFrom utils combn
 #' @importFrom stats integrate
+#' @importFrom rlang warn
 #' @rdname phidiv_gauss_quadrature
 phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, poly_order = 20,
-                                     divergence, family, kernel) {
+                                     divergence, family, kernel, eps = 2e-2, mismatch_penalty = 10) {
   kernel <- substr(kernel[[1]], 1, 1)
 
   # Evaluate the KDE at the Gaussian evaluation points
@@ -248,20 +249,44 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
                               bw      = bandwidth,
                               kernel  = kernel))
 
+  # Boundary correction
+  if (any(is.finite(range_family))) {
+    gkpts[, "f_hat"] <- kde_boundary_correction(evalpts = gkpts[, "int_x"],
+                                                kde     = gkpts[, "f_hat"],
+                                                bw      = bandwidth,
+                                                range   = range_family,
+                                                kernel  = kernel)
+  }
+
+  # Ensure that hat(f) integrates to one
+  f_hat_int <- crossprod(gkpts[, "int_wgt"], gkpts[, "f_hat"])[[1]]
+  if (f_hat_int < 1 - eps) {
+    warn(paste("KDE integrates to", f_hat_int, "<< 1.",
+               "Consider increasing the number of subdivisions",
+               "and/or the order of the polynomial for the Gaussian quadrature."))
+  }
+  gkpts[, "f_hat"] <- gkpts[, "f_hat"] / f_hat_int
+
   list(
     divergence_int = \(params) {
       params[] <- family$inv_trans(params)
       f_theta <- family$dfun(gkpts[, "int_x"], params = params, log = FALSE)
+
+      gap_contrib <- vapply(seq_len(ncol(gaps)), FUN.VALUE = numeric(1), FUN = \(i) {
+        diff(family$pfun(gaps[, i], params = params))
+      }) |>
+        sum()
+
+      # Verify that f_theta integrates to 1
+      f_theta_int <- crossprod(gkpts[, "int_wgt"], f_theta)[[1]] + gap_contrib
+
       singular_pts <- which(f_theta < .Machine$double.eps)
       integrand <- divergence$phi(gkpts[, "f_hat"] / f_theta) * f_theta
       integrand[singular_pts] <- gkpts[singular_pts, "f_hat"] * divergence$phi_deriv_inf
       int_val <- crossprod(gkpts[, "int_wgt"], integrand) |>
         drop()
 
-      gap_contrib <- vapply(seq_len(ncol(gaps)), FUN.VALUE = numeric(1), FUN = \(i) {
-        gap_const * diff(family$pfun(gaps[, i], params = params))
-      }) |>
-        sum()
+      gap_contrib <- gap_const * gap_contrib / f_theta_int
 
       if (length(singular_pts) == length(f_theta) && gap_contrib < .Machine$double.eps) {
         # f_theta is non-zero only in between the Gauss evaluation points
@@ -271,7 +296,8 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
         return(Inf)
       }
 
-      int_val + gap_contrib
+      # Penalize for the mismatch
+      int_val + gap_contrib + mismatch_penalty * (1 - f_theta_int)^2
     },
 
     sandwich_cov_A = \(params, rel_tol = 1e-12) {

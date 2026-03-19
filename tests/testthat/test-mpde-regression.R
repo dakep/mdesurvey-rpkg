@@ -80,6 +80,7 @@ test_that("Gamma Regression (log link)", {
                            link       = link('log', sd = 'log'),
                            divergence = 'ned',
                            family     = gamma_family,
+                           optim_method = 'BFGS',
                            optim_control = list(maxit = 5001)))
   expect_length(coef(res), 6)
   expect_length(sigma(res), 1)
@@ -98,7 +99,6 @@ test_that("Gamma Regression (log link)", {
     expect_shape(dim = c(1L, 1L))
   expect_no_error(vcov(res, which = 'all', type = "model")) |>
     expect_shape(dim = c(7L, 7L))
-
 })
 
 test_that("Normal Regression", {
