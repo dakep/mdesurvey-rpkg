@@ -286,7 +286,7 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
       int_val <- crossprod(gkpts[, "int_wgt"], integrand) |>
         drop()
 
-      gap_contrib <- gap_const * gap_contrib / f_theta_int
+      gap_contrib <- gap_const * gap_contrib
 
       if (length(singular_pts) == length(f_theta) && gap_contrib < .Machine$double.eps) {
         # f_theta is non-zero only in between the Gauss evaluation points

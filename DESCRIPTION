@@ -1,8 +1,8 @@
 Package: mdesurvey
 Type: Package
 Title: Minimum Divergence Estimators for Complex Survey Designs
-Version: 0.3.3
-Date: 2026-03-19
+Version: 0.3.4
+Date: 2026-03-27
 Authors@R: c(
     person(
       "David", "Kepplinger",
