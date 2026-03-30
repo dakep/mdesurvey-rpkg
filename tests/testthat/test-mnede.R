@@ -29,9 +29,9 @@ test_that("Gamma MNEDE", {
                      divergence = 'ned',
                      family     = 'gamma')
 
-  expect_equal(coef(res), c(shape = 1.733, scale = 40780), tolerance = 1e-3)
+  expect_equal(coef(res), c(shape = 1.56, scale = 44359), tolerance = 1e-3)
   expect_equal(vcov(res, "sandwich"),
-               matrix(c(0.04337103, -949.1532, -949.1532, 21863813.4609), ncol = 2,
+               matrix(c(3.950645e-2, -1070.628, -1070.628, 30475409.169), ncol = 2,
                       dimnames = list(c("shape", "scale"), c("shape", "scale"))) |>
                  structure(type = "sandwich"),
                tolerance = 1e-3)

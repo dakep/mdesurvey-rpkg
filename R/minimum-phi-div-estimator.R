@@ -3,6 +3,25 @@
 #'
 #' Compute the survey MPDE for the parameters of a user-specified continuous model.
 #'
+#' ## Singularities and mismatches
+#' When minimizing the divergence between the KDE and the model density, 2 issues can arise:
+#'
+#' 1. The integration grid is designed such that the KDE integrates to 1. If a parameter
+#'    combination for the model density yields a density that is concentrated in a substantially
+#'    narrower region, the model density would not integrate to 1 with this integration grid.
+#'    Since this model density is likely a poor fit to the data anyways, the optimization
+#'    penalizes these densities by `mismatch_penalty * (1 - f_theta_int)^2`,
+#'    where `f_theta_int` is the evaluated integral
+#'    of the model density. Typically, a mismatch penalty several times the maximum value of
+#'    the divergence works well.
+#' 2. For divergences with infinite gradient as \eqn{\delta(x) = \hat f(x) / g_\theta(x) \to \infty},
+#'    singularities will result in the divergence becoming infinite, too.
+#'    To escape these parameter regions of poor fit, the optimization can replace the infinite value
+#'    with `singularity_penalty * (1 + family$inverse_scale(params))`.
+#'
+#' Note that the returned value for the minimum \eqn{\phi}-divergence does not use these
+#' adjustments and returns the actual divergence between the KDE and the fitted model.
+#'
 #' @param x a formula, symbol, expression, vector, or matrix specifying the observations.
 #'   The objects are first looked up in the provided `design`, then in the calling environment.
 #' @param design the survey design created by [survey::svydesign()] and friends.
@@ -18,6 +37,9 @@
 #'   for Gauss-Kronrod quadrature.
 #' @param bw bandwidth for the HT-adjusted KDE. Uses [stats::bw.nrd()] as default.
 #' @param kernel Name of the kernel used in the HT-adjusted KDE.
+#' @param mismatch_penalty,singularity_penalty penalties for mismatches between the scale
+#'   of the model density and the KDE, and for singularities of the KDE w.r.t. the mode
+#'   density. See details.
 #'
 #' @param optim_method,optim_control method and control options passed on to [stats::optim()].
 #' @importFrom stats uniroot optim bw.nrd
@@ -33,7 +55,9 @@ survey_mpde <- function (x, design,
                          integration_subdivisions = 256,
                          bw,
                          kernel = c("epanechnikov", "triangular", "rectangular", "biweight"),
-                         optim_method = "Nelder-Mead", optim_control = list()) {
+                         optim_method = "Nelder-Mead", optim_control = list(),
+                         mismatch_penalty = 10,
+                         singularity_penalty = mismatch_penalty) {
   if (is.character(divergence)) {
     divergence <- phi_divergence(divergence)
   }
@@ -86,10 +110,12 @@ survey_mpde <- function (x, design,
                                            kernel = kernel,
                                            n_subdivisions = integration_subdivisions)
 
-  mpd_est <- optim(family$trans(initial),
-                   fn = mpde_integral$divergence_int,
-                   method = optim_method,
-                   control = optim_control)
+  mpd_est <- optim(par                 = family$trans(initial),
+                   fn                  = mpde_integral$divergence_int,
+                   mismatch_penalty    = mismatch_penalty,
+                   singularity_penalty = singularity_penalty,
+                   method              = optim_method,
+                   control             = optim_control)
 
   if (mpd_est$convergence != 0) {
     warn(sprintf("Optimizer did not converge (code %d): %s",
@@ -99,13 +125,14 @@ survey_mpde <- function (x, design,
   estimates <- family$inv_trans(mpd_est$par)
   names(estimates) <- family$parameter_names
   covest <- mpde_covest(svy$x, estimates, mpde_integral, family, design, divergence)
+  mpd_value <- mpde_integral$divergence_int(mpd_est$par)
 
   structure(
     list(estimates      = estimates,
          family         = family,
          divergence     = divergence,
          cov            = covest$cov,
-         mpd            = mpd_est$value,
+         mpd            = mpd_value,
          initial        = initial,
          nobs           = nobs,
          neff_kish      = nobs_eff,
@@ -268,7 +295,7 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
   gkpts[, "f_hat"] <- gkpts[, "f_hat"] / f_hat_int
 
   list(
-    divergence_int = \(params, mismatch_penalty = 10) {
+    divergence_int = \(params, mismatch_penalty = 0, singularity_penalty = Inf) {
       params[] <- family$inv_trans(params)
       f_theta <- family$dfun(gkpts[, "int_x"], params = params, log = FALSE)
 
@@ -283,9 +310,15 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
       int_val <- crossprod(gkpts[, "int_wgt"], integrand) |>
         drop()
 
-      # Penalize if f_theta does not integrate to 1
-      f_theta_int <- crossprod(gkpts[, "int_wgt"], f_theta)[[1]] + gap_contrib
-      int_val + gap_const * gap_contrib + mismatch_penalty * (1 - f_theta_int)^2
+      div <- int_val + gap_const * gap_contrib
+      if (!is.finite(div)) {
+        # Penalize if the KDE is not absolutely continuous w.r.t. f_theta
+        singularity_penalty * (1 + family$inverse_scale(params))
+      } else {
+        # Penalize if f_theta does not integrate to 1
+        f_theta_int <- crossprod(gkpts[, "int_wgt"], f_theta)[[1]] + gap_contrib
+        div + mismatch_penalty * (1 - f_theta_int)^2
+      }
     },
 
     sandwich_cov_A = \(params, rel_tol = 1e-12) {

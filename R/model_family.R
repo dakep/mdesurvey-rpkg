@@ -106,6 +106,12 @@ ModelFamily <- R6Class(
     #'   linear regression model
     default_link = NULL,
 
+    #' @field inverse_scale a function that returns a value corresponding to the notion
+    #'   of an inverse scale.
+    #'   This can be either the inverse of the actual SD of the family, or other statistics
+    #'   which monotonically increase with the "concentration" of the density.
+    inverse_scale = NULL,
+
     #' @description
     #' Define a new model family.
     #'
@@ -145,12 +151,16 @@ ModelFamily <- R6Class(
     #' @param jacobian_mean_par_mapping function to compute the Jacobian matrix of the
     #'   mapping from the mean/nuisance parameters to the family's natural parameters.
     #' @param default_link default link functions, a list of [Link] instances.
-    #'
+    #' @param inverse_scale (optional) a function that returns a value corresponding to the notion
+    #'   of an inverse scale.
+    #'   This can be either the inverse of the actual SD of the family, or other statistics
+    #'   which monotonically increase with the "concentration" of the density.
+    #'   If missing, a function that returns `Inf` will be used.
     #' @importFrom rlang abort
     initialize = \ (name, parameter_names, range, dfun, pfun, raw_scores, hessian, fisher_inf,
                     trans, inv_trans, initial,
                     nuisance_names, parameters_from_mean_par, mean_par, jacobian_mean_par_mapping,
-                    default_link) {
+                    default_link, inverse_scale) {
       self$name <- name
       self$parameter_names <- parameter_names
       if (is.null(dim(range))) {
@@ -171,6 +181,11 @@ ModelFamily <- R6Class(
       self$nuisance_names <- as.character(nuisance_names)
 
       self$default_link <- .check_link(default_link, self$nuisance_names)
+      self$inverse_scale <- if (!missing(inverse_scale)) {
+        match.fun(inverse_scale)
+      } else {
+        \(params) Inf
+      }
 
       self$parameters_from_mean_par <- if (missing(parameters_from_mean_par)) {
         \(...) {

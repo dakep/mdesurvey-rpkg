@@ -218,12 +218,20 @@ hd_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, poly_
 
   colnames(gkpts) <- c("int_x", "int_wgt")
   gkpts <- cbind(gkpts,
-                 log_f_hat = .kde(x       = x,
-                                  wgts    = wgts,
-                                  evalpts = gkpts[, "int_x"],
-                                  bw      = bandwidth,
-                                  kernel  = kernel) |>
-                   log())
+                 f_hat = .kde(x       = x,
+                              wgts    = wgts,
+                              evalpts = gkpts[, "int_x"],
+                              bw      = bandwidth,
+                              kernel  = kernel))
+
+  if (any(is.finite(range))) {
+    gkpts[, "f_hat"] <- kde_boundary_correction(evalpts = gkpts[, "int_x"],
+                                                kde     = gkpts[, "f_hat"],
+                                                bw      = bandwidth,
+                                                range   = range,
+                                                kernel  = kernel)
+  }
+  gkpts[, "f_hat"] <- log(gkpts[, "f_hat"])
 
   list(
     # Compute int exp{0.5 [log(f(x)) + h(x)]} dx
@@ -235,7 +243,7 @@ hd_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, poly_
       }
 
       vapply(seq_len(ncol(h)), FUN.VALUE = numeric(1), FUN = \(i) {
-        crossprod(gkpts[, "int_wgt"], exp(0.5 * (gkpts[, "log_f_hat"] + h[, i])))[[1, 1]]
+        crossprod(gkpts[, "int_wgt"], exp(0.5 * (gkpts[, "f_hat"] + h[, i])))[[1, 1]]
       }) |>
         pmax(0)
     },
@@ -249,7 +257,7 @@ hd_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, poly_
       }
 
       vapply(seq_len(ncol(h)), FUN.VALUE = numeric(1), FUN = \(i) {
-        crossprod(gkpts[, "int_wgt"], exp(0.5 * gkpts[, "log_f_hat"]) * h[, i])[[1, 1]]
+        crossprod(gkpts[, "int_wgt"], exp(0.5 * gkpts[, "f_hat"]) * h[, i])[[1, 1]]
       })
     }
   )

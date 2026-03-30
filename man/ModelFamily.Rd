@@ -61,6 +61,11 @@ from the mean/nuisance parameters to the family's natural parameters
 
 \item{\code{default_link}}{default link functions for the mean and scale components in a
 linear regression model}
+
+\item{\code{inverse_scale}}{a function that returns a value corresponding to the notion
+of an inverse scale.
+This can be either the inverse of the actual SD of the family, or other statistics
+which monotonically increase with the "concentration" of the density.}
 }
 \if{html}{\out{</div>}}
 }
@@ -94,7 +99,8 @@ Define a new model family.
   parameters_from_mean_par,
   mean_par,
   jacobian_mean_par_mapping,
-  default_link
+  default_link,
+  inverse_scale
 )}\if{html}{\out{</div>}}
 }
 
@@ -151,6 +157,12 @@ May not be well defined, in which case the undefined parameters should be NA.}
 mapping from the mean/nuisance parameters to the family's natural parameters.}
 
 \item{\code{default_link}}{default link functions, a list of \link{Link} instances.}
+
+\item{\code{inverse_scale}}{(optional) a function that returns a value corresponding to the notion
+of an inverse scale.
+This can be either the inverse of the actual SD of the family, or other statistics
+which monotonically increase with the "concentration" of the density.
+If missing, a function that returns \code{Inf} will be used.}
 }
 \if{html}{\out{</div>}}
 }

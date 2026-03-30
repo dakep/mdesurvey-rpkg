@@ -16,7 +16,9 @@ survey_mpde(
   bw,
   kernel = c("epanechnikov", "triangular", "rectangular", "biweight"),
   optim_method = "Nelder-Mead",
-  optim_control = list()
+  optim_control = list(),
+  mismatch_penalty = 10,
+  singularity_penalty = mismatch_penalty
 )
 }
 \arguments{
@@ -45,9 +47,36 @@ for Gauss-Kronrod quadrature.}
 \item{kernel}{Name of the kernel used in the HT-adjusted KDE.}
 
 \item{optim_method, optim_control}{method and control options passed on to \code{\link[stats:optim]{stats::optim()}}.}
+
+\item{mismatch_penalty, singularity_penalty}{penalties for mismatches between the scale
+of the model density and the KDE, and for singularities of the KDE w.r.t. the mode
+density. See details.}
 }
 \description{
 Compute the survey MPDE for the parameters of a user-specified continuous model.
+}
+\details{
+\subsection{Singularities and mismatches}{
+
+When minimizing the divergence between the KDE and the model density, 2 issues can arise:
+\enumerate{
+\item The integration grid is designed such that the KDE integrates to 1. If a parameter
+combination for the model density yields a density that is concentrated in a substantially
+narrower region, the model density would not integrate to 1 with this integration grid.
+Since this model density is likely a poor fit to the data anyways, the optimization
+penalizes these densities by \code{mismatch_penalty * (1 - f_theta_int)^2},
+where \code{f_theta_int} is the evaluated integral
+of the model density. Typically, a mismatch penalty several times the maximum value of
+the divergence works well.
+\item For divergences with infinite gradient as \eqn{\delta(x) = \hat f(x) / g_\theta(x) \to \infty},
+singularities will result in the divergence becoming infinite, too.
+To escape these parameter regions of poor fit, the optimization can replace the infinite value
+with \code{singularity_penalty * (1 + family$inverse_scale(params))}.
+}
+
+Note that the returned value for the minimum \eqn{\phi}-divergence does not use these
+adjustments and returns the actual divergence between the KDE and the fitted model.
+}
 }
 \seealso{
 Other Minimum Phi-Divergence Estimator: 

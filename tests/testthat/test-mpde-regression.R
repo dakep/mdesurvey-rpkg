@@ -200,3 +200,105 @@ test_that("Student-t Regression", {
   expect_no_error(vcov(res, which = 'all', type = "model")) |>
     expect_shape(dim = c(8L, 8L))
 })
+
+test_that("Student-t Regression (KL)", {
+  N <- 1e6
+  n <- 1e3
+  scale <- 5e3
+  df <- 4
+
+  t_family <- model_family('t')
+  set.seed(1)
+  finite_pop <- simulate_finitepop_lm(
+    size = N,
+    terms = list(Intercept = 50000,
+                 x1 = c(a = 0, b = 40000, c = 50000),
+                 x2 = c(a = 0, b = 30000),
+                 x3 = c(a = 0, b = 15000, c = 40000)),
+    cor = 0.8,
+    ranf = \(n, mean) {
+      params <- t_family$parameters_from_mean_par(mean, nuisance = c(scale = scale, df = df))
+      x <- rt(n, df = params[['df']])
+      params[['location']] + x * params[['scale']]
+    })
+
+  design <- get_design(n = n, strata = ~ x1, finite_pop = finite_pop, sampling = 'pps',
+                       pps_aux = ~ z)
+
+  res <- expect_no_error(
+    survey_regression_mpde(y ~ x1 + x2 + x3,
+                           design        = design,
+                           divergence    = 'kl',
+                           family        = t_family,
+                           optim_method  = 'BFGS',
+                           optim_control = list(maxit = 5001)))
+
+  expect_length(coef(res), 6)
+  expect_length(sigma(res), 2)
+  vcov_sandwich <- expect_no_error(vcov(res))
+  expect_shape(vcov_sandwich, dim = c(6L, 6L))
+  expect_all_true(sqrt(diag(vcov_sandwich)) > 100)
+  expect_no_error(vcov(res, which = 'nuisance')) |>
+    expect_shape(dim = c(2L, 2L))
+  expect_no_error(vcov(res, which = 'all')) |>
+    expect_shape(dim = c(8L, 8L))
+
+  vcov_model <- expect_no_error(vcov(res, type = "model"))
+  expect_shape(vcov_model, dim = c(6L, 6L))
+  expect_all_true(sqrt(diag(vcov_model)) > 100)
+  expect_no_error(vcov(res, which = 'nuisance', type = "model")) |>
+    expect_shape(dim = c(2L, 2L))
+  expect_no_error(vcov(res, which = 'all', type = "model")) |>
+    expect_shape(dim = c(8L, 8L))
+})
+
+test_that("Student-t Regression (Misspecified KL)", {
+  N <- 1e6
+  n <- 1e3
+  scale <- 5e3
+  df <- 4
+
+  t_family <- model_family('t')
+  set.seed(1)
+  finite_pop <- simulate_finitepop_lm(
+    size = N,
+    terms = list(Intercept = 50000,
+                 x1 = c(a = 0, b = 40000, c = 50000),
+                 x2 = c(a = 0, b = 30000),
+                 x3 = c(a = 0, b = 15000, c = 40000)),
+    cor = 0.8,
+    ranf = \(n, mean) {
+      params <- t_family$parameters_from_mean_par(mean, nuisance = c(scale = scale, df = df))
+      x <- rt(n, df = params[['df']])
+      params[['location']] + x * params[['scale']]
+    })
+
+  design <- get_design(n = n, strata = ~ x1, finite_pop = finite_pop, sampling = 'pps',
+                       pps_aux = ~ z)
+
+  res <- expect_no_error(
+    survey_regression_mpde(y ~ x1 + x2 + x3,
+                           design        = design,
+                           divergence    = 'kl',
+                           family        = 'normal',
+                           optim_method  = 'BFGS',
+                           optim_control = list(maxit = 5001)))
+
+  expect_length(coef(res), 6)
+  expect_length(sigma(res), 1)
+  vcov_sandwich <- expect_no_error(vcov(res))
+  expect_shape(vcov_sandwich, dim = c(6L, 6L))
+  expect_all_true(sqrt(diag(vcov_sandwich)) > 100)
+  expect_no_error(vcov(res, which = 'nuisance')) |>
+    expect_shape(dim = c(1L, 1L))
+  expect_no_error(vcov(res, which = 'all')) |>
+    expect_shape(dim = c(7L, 7L))
+
+  vcov_model <- expect_no_error(vcov(res, type = "model"))
+  expect_shape(vcov_model, dim = c(6L, 6L))
+  expect_all_true(sqrt(diag(vcov_model)) > 100)
+  expect_no_error(vcov(res, which = 'nuisance', type = "model")) |>
+    expect_shape(dim = c(1L, 1L))
+  expect_no_error(vcov(res, which = 'all', type = "model")) |>
+    expect_shape(dim = c(7L, 7L))
+})

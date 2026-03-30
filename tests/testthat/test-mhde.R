@@ -26,20 +26,21 @@ test_that("Gamma MHDE", {
 
   res <- survey_mhde(~ y,
                      design = des,
-                     family = model_family('gamma'))
+                     family = model_family('gamma'),
+                     optim_method = 'BFGS')
 
-  expect_equal(coef(res), c(shape = 1.752, scale = 40063), tolerance = 1e-3)
-  expect_equal(res$neff_scores, c(shape = 319, scale = 713), tolerance = 1e-3)
+  expect_equal(coef(res), c(shape = 1.6, scale = 43380), tolerance = 1e-3)
+  expect_equal(res$neff_scores, c(shape = 363.6, scale = 756.8), tolerance = 1e-3)
   expect_equal(res$family$fisher_inf(coef(res)),
-               matrix(c(0.763077600534, 0.000024960726, 0.000024960726, 0.000000001091), ncol = 2),
+               matrix(c(0.8690425, 0.000002305101, 0.000002305101, 8.422395e-10), ncol = 2),
                tolerance = 1e-3)
   expect_equal(vcov(res, "sandwich"),
-               matrix(c(0.02229989, -383.4634, -383.4634, 7247553.0253), ncol = 2,
+               matrix(c(0.01590053, -314.3263, -314.3263, 6959807.9486), ncol = 2,
                       dimnames = list(c("shape", "scale"), c("shape", "scale"))) |>
                  structure(type = "sandwich"),
                tolerance = 1e-3)
   expect_equal(vcov(res, "model"),
-               matrix(c(0.01629254, -249.2733, -249.2733, 5098261.0461), ncol = 2,
+               matrix(c(0.01154757, -219.0616, -219.0616, 5724513.7698), ncol = 2,
                       dimnames = list(c("shape", "scale"), c("shape", "scale"))),
                tolerance = 1e-3)
 })
@@ -149,3 +150,4 @@ test_that("MHDE vs MPDE-HD in Normal models", {
   expect_equal(vcov(mhde, "sandwich"), vcov(mpde, "sandwich"), tolerance = 1e-3)
   expect_equal(vcov(mhde, "model"), vcov(mpde, "model"), tolerance = 1e-3)
 })
+

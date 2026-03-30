@@ -47,9 +47,11 @@ Normal <- ModelFamily$new(
   },
   jacobian_mean_par_mapping = \(mean, nuisance) {
     matrix(c(1, 0, 0, 1), ncol = 2)
+  },
+  inverse_scale = \(params) {
+    1 / params[['sd']]
   }
 )
-
 
 .model_family_register$normal <-
   .model_family_register$gaussian <- Normal

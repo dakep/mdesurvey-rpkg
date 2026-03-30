@@ -103,6 +103,11 @@ Weibull <- ModelFamily$new(
   },
   jacobian_mean_par_mapping = \(mean, nuisance) {
     matrix(c(NA_real_, NA_real_, NA_real_, NA_real_), ncol = 2)
+  },
+  inverse_scale = \(params) {
+    sd <- params[['scale']] * sqrt(gamma(1 + 2 / params[['shape']]) -
+                                     gamma(1 + 1 / params[['shape']])^2)
+    1 / sd
   }
 )
 

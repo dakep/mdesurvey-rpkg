@@ -105,6 +105,9 @@ StudentT <- ModelFamily$new(
   },
   jacobian_mean_par_mapping = \(mean, nuisance) {
     diag(nrow = 3, ncol = 3)
+  },
+  inverse_scale = \(params) {
+    1 / params[['scale']]
   }
 )
 

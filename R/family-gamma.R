@@ -57,6 +57,9 @@ Gamma <- ModelFamily$new(
   jacobian_mean_par_mapping = \ (mean, nuisance) {
     matrix(c(2 * mean / nuisance^2, -(nuisance/mean)^2,
              -2 * mean^2 / nuisance^3, 2 * nuisance / mean), ncol = 2)
+  },
+  inverse_scale = \(params) {
+    1 / (sqrt(params[['shape']]) * params[['scale']])
   }
 )
 

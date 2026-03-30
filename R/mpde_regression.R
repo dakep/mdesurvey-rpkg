@@ -4,6 +4,25 @@
 #' Compute the survey MPDE for the mean regression parameters under a user-specified continuous
 #' model for the conditional distribution \eqn{Y \mid X = x} for **discrete** \eqn{X}.
 #'
+#' ## Singularities and mismatches
+#' When minimizing the divergence between the KDE and the model density, 2 issues can arise:
+#'
+#' 1. The integration grid is designed such that the KDE integrates to 1. If a parameter
+#'    combination for the model density yields a density that is concentrated in a substantially
+#'    narrower region, the model density would not integrate to 1 with this integration grid.
+#'    Since this model density is likely a poor fit to the data anyways, the optimization
+#'    penalizes these densities by `mismatch_penalty * (1 - f_theta_int)^2`,
+#'    where `f_theta_int` is the evaluated integral
+#'    of the model density. Typically, a mismatch penalty several times the maximum value of
+#'    the divergence works well.
+#' 2. For divergences with infinite gradient as \eqn{\delta(x) = \hat f(x) / g_\theta(x) \to \infty},
+#'    singularities will result in the divergence becoming infinite, too.
+#'    To escape these parameter regions of poor fit, the optimization can replace the infinite value
+#'    with `singularity_penalty * (1 + family$inverse_scale(params))`.
+#'
+#' Note that the returned value for the minimum \eqn{\phi}-divergence does not use these
+#' adjustments and returns the actual divergence between the KDE and the fitted model.
+#'
 #' @param x a formula or matrix specifying the linear model.
 #'   The objects are first looked up in the provided `design`, then in the calling environment.
 #' @param design the survey design created by [survey::svydesign()] and friends.
@@ -28,6 +47,9 @@
 #'   used for all groups, or (the name of) a function which will be used to cmpute the
 #'   bandwidth separately in each group. Uses [stats::bw.nrd()] as default.
 #' @param kernel Name of the kernel used in the HT-adjusted KDE.
+#' @param mismatch_penalty,singularity_penalty penalties for mismatches between the scale
+#'   of the model density and the KDE, and for singularities of the KDE w.r.t. the mode
+#'   density. See details.
 #'
 #' @param optim_method,optim_control method and control options passed on to [stats::optim()].
 #' @importFrom stats uniroot optim bw.nrd model.frame model.matrix model.response lm.fit
@@ -47,7 +69,9 @@ survey_regression_mpde <- function (x,
                                     integration_subdivisions = 256,
                                     bw = bw.nrd,
                                     kernel = c("epanechnikov", "triangular", "rectangular", "biweight"),
-                                    optim_method = "Nelder-Mead", optim_control = list()) {
+                                    optim_method = "Nelder-Mead", optim_control = list(),
+                                    mismatch_penalty = 10,
+                                    singularity_penalty = mismatch_penalty) {
   if (is.character(divergence)) {
     divergence <- phi_divergence(divergence)
   }
@@ -187,10 +211,12 @@ survey_regression_mpde <- function (x,
                        mean <- drop(gr$x %*% regpars[mean_components]) |>
                          link$mean$inv()
                        # We need to transform here because the `divergence_int()` back-transforms!
-                       gr_params <- family$trans(
-                         family$parameters_from_mean_par(mean, nuisance))
+                       params <- family$parameters_from_mean_par(mean, nuisance)
+                       gr_params <- family$trans(params)
                        if (all(is.finite(gr_params))) {
-                         gr$prop * gr$divergence_int(gr_params)
+                         gr$prop * gr$divergence_int(gr_params,
+                                                     mismatch_penalty = mismatch_penalty,
+                                                     singularity_penalty = singularity_penalty)
                        } else {
                          Inf
                        }
@@ -211,6 +237,20 @@ survey_regression_mpde <- function (x,
   names(reg_coefs) <- colnames(xmat)
   nuisance_est <- nuisance_linkinv_apply(mpd_est$par)
   names(nuisance_est) <- family$nuisance_names
+
+  mpd_value <- vapply(grouped, FUN.VALUE = numeric(1), FUN = \(gr) {
+    mean <- drop(gr$x %*% reg_coefs) |>
+      link$mean$inv()
+    # We need to transform here because the `divergence_int()` back-transforms!
+    params <- family$parameters_from_mean_par(mean, nuisance_est)
+    gr_params <- family$trans(params)
+    if (all(is.finite(gr_params))) {
+      gr$prop * gr$divergence_int(gr_params)
+    } else {
+      Inf
+    }
+  }) |>
+    sum()
 
   # Covariance matrix estimation
   group_cov_info <- lapply(grouped, FUN = \(gr) {
@@ -298,7 +338,7 @@ survey_regression_mpde <- function (x,
          link           = link,
          divergence     = divergence,
          finf_inv       = finf_inv,
-         mpd            = mpd_est$value,
+         mpd            = mpd_value,
          initial        = initial_params,
          optimizer_code = mpd_est$convergence,
          optimizer_msg  = mpd_est$message),
