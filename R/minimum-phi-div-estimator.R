@@ -202,7 +202,7 @@ pseudo_inverse <- function (x) {
 #' @importFrom rlang warn
 #' @rdname phidiv_gauss_quadrature
 phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, poly_order = 20,
-                                     divergence, family, kernel, eps = 2e-2, mismatch_penalty = 10) {
+                                     divergence, family, kernel, eps = 2e-2) {
   kernel <- substr(kernel[[1]], 1, 1)
 
   # Evaluate the KDE at the Gaussian evaluation points
@@ -268,7 +268,7 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
   gkpts[, "f_hat"] <- gkpts[, "f_hat"] / f_hat_int
 
   list(
-    divergence_int = \(params) {
+    divergence_int = \(params, mismatch_penalty = 10) {
       params[] <- family$inv_trans(params)
       f_theta <- family$dfun(gkpts[, "int_x"], params = params, log = FALSE)
 
@@ -277,27 +277,15 @@ phidiv_gauss_quadrature <- function (x, wgts, bandwidth, n_subdivisions = 256, p
       }) |>
         sum()
 
-      # Verify that f_theta integrates to 1
-      f_theta_int <- crossprod(gkpts[, "int_wgt"], f_theta)[[1]] + gap_contrib
-
       singular_pts <- which(f_theta < .Machine$double.eps)
       integrand <- divergence$phi(gkpts[, "f_hat"] / f_theta) * f_theta
       integrand[singular_pts] <- gkpts[singular_pts, "f_hat"] * divergence$phi_deriv_inf
       int_val <- crossprod(gkpts[, "int_wgt"], integrand) |>
         drop()
 
-      gap_contrib <- gap_const * gap_contrib
-
-      if (length(singular_pts) == length(f_theta) && gap_contrib < .Machine$double.eps) {
-        # f_theta is non-zero only in between the Gauss evaluation points
-        # (i.e., the actual support of f_theta is so much smaller than the support of f_hat),
-        # hence we're unable to evaluate the integral, but the densities are obviously
-        # very different.
-        return(Inf)
-      }
-
-      # Penalize for the mismatch
-      int_val + gap_contrib + mismatch_penalty * (1 - f_theta_int)^2
+      # Penalize if f_theta does not integrate to 1
+      f_theta_int <- crossprod(gkpts[, "int_wgt"], f_theta)[[1]] + gap_contrib
+      int_val + gap_const * gap_contrib + mismatch_penalty * (1 - f_theta_int)^2
     },
 
     sandwich_cov_A = \(params, rel_tol = 1e-12) {
