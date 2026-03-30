@@ -13,8 +13,7 @@ phidiv_gauss_quadrature(
   divergence,
   family,
   kernel,
-  eps = 0.02,
-  mismatch_penalty = 10
+  eps = 0.02
 )
 }
 \value{

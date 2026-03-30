@@ -22,8 +22,8 @@ test_that("Gamma Regression (identity link)", {
       rgamma(n, shape = params[['shape']], scale = params[['scale']])
     })
 
-  design <- stratified_sampling(n = n, strata = ~ x1, finite_pop = finite_pop, sampling = 'pps',
-                                pps_aux = ~ z)
+  design <- get_design(n = n, strata = ~ x1, finite_pop = finite_pop, sampling = 'pps',
+                       pps_aux = ~ z)
 
   res <- expect_no_error(
     survey_regression_mpde(y ~ x1 + x2 + x3,
@@ -71,8 +71,8 @@ test_that("Gamma Regression (log link)", {
       rgamma(n, shape = params[['shape']], scale = params[['scale']])
     })
 
-  design <- stratified_sampling(n = n, strata = ~ x1, finite_pop = finite_pop, sampling = 'pps',
-                                pps_aux = ~ z)
+  design <- get_design(n = n, strata = ~ x1, finite_pop = finite_pop, sampling = 'pps',
+                       pps_aux = ~ z)
 
   res <- expect_no_error(
     survey_regression_mpde(y ~ x1 + x2 + x3,
@@ -120,8 +120,8 @@ test_that("Normal Regression", {
       rnorm(n, mean = params[['mean']], sd = params[['sd']])
     })
 
-  design <- stratified_sampling(n = n, strata = ~ x1, finite_pop = finite_pop, sampling = 'pps',
-                                pps_aux = ~ z)
+  design <- get_design(n = n, strata = ~ x1, finite_pop = finite_pop, sampling = 'pps',
+                       pps_aux = ~ z)
 
   res <- expect_no_error(
     survey_regression_mpde(y ~ x1 + x2 + x3,
@@ -171,8 +171,8 @@ test_that("Student-t Regression", {
       params[['location']] + x * params[['scale']]
     })
 
-  design <- stratified_sampling(n = n, strata = ~ x1, finite_pop = finite_pop, sampling = 'pps',
-                                pps_aux = ~ z)
+  design <- get_design(n = n, strata = ~ x1, finite_pop = finite_pop, sampling = 'pps',
+                       pps_aux = ~ z)
 
   res <- expect_no_error(
     survey_regression_mpde(y ~ x1 + x2 + x3,
