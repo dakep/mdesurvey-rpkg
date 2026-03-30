@@ -92,7 +92,7 @@ StudentT <- ModelFamily$new(
       scale    = mad(x, center = med, constant = 1),
       df       = 4)
   },
-  # For the Normal model, the nuisance parameter is the scale (standard deviation)
+  # For the Student-t model, the nuisance parameter is the scale (standard deviation)
   nuisance_names = c('scale', 'df'),
   default_link   = link('identity', scale = 'log', df = 'log'),
   parameters_from_mean_par = \(mean, nuisance) {

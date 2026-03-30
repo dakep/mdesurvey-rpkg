@@ -40,23 +40,29 @@ Gamma <- ModelFamily$new(
 
     c(shape = shape$root, scale = wmx / shape$root)
   },
-  # For the Gamma model, the nuisance parameter is the scale (standard deviation)
-  nuisance_names = 'sd',
-  default_link   = link('log', sd = 'log'),
+  # For the Gamma model, the nuisance parameter is the variance multiplier
+  nuisance_names = 'var_mult',
+  default_link   = link('log', var_mult = 'log'),
   parameters_from_mean_par = \(mean, nuisance) {
     if (!isTRUE(mean > .Machine$double.eps) || !isTRUE(nuisance[[1]] > .Machine$double.eps)) {
       c(shape = NA_real_, scale = NA_real_)
     } else {
-      c(shape = mean^2 / nuisance[[1]]^2, scale = nuisance[[1]]^2 / mean)
+      # sd <- mean * nuisance[[1]]
+      c(shape = 1 / nuisance[[1]], scale = mean * nuisance[[1]])
+      # == c(shape = mean^2 / sd^2, scale = sd^2 / mean)
     }
   },
   mean_par = \ (params) {
-    c(mean = prod(params),
-      sd   = sqrt(params[['shape']]) * params[['scale']])
+    mean <- prod(params)
+    var <- params[['shape']] * params[['scale']]^2
+    c(mean     = mean,
+      var_mult = var / mean^2)
   },
   jacobian_mean_par_mapping = \ (mean, nuisance) {
-    matrix(c(2 * mean / nuisance^2, -(nuisance/mean)^2,
-             -2 * mean^2 / nuisance^3, 2 * nuisance / mean), ncol = 2)
+    # matrix(c(2 * mean / nuisance^2, -(nuisance/mean)^2,
+    #          -2 * mean^2 / nuisance^3, 2 * nuisance / mean), ncol = 2)
+    matrix(c(0, nuisance[[1]]^2,
+             -1 / nuisance[[1]]^2, 2 * mean * nuisance[[1]]), ncol = 2)
   },
   inverse_scale = \(params) {
     1 / (sqrt(params[['shape']]) * params[['scale']])

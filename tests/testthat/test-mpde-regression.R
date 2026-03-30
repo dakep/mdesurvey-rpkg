@@ -6,7 +6,7 @@ source(test_path("simulate-finitepop.R"))
 test_that("Gamma Regression (identity link)", {
   N <- 1e6
   n <- 1e3
-  gamma_sd <- sqrt(2) * 35000
+  gamma_var_mult <- 0.5
 
   gamma_family <- model_family('gamma')
   set.seed(1)
@@ -18,7 +18,7 @@ test_that("Gamma Regression (identity link)", {
                  x3 = c(a = 0, b = 15000, c = 40000)),
     cor = 0.8,
     ranf = \(n, mean) {
-      params <- gamma_family$parameters_from_mean_par(mean, nuisance = gamma_sd)
+      params <- gamma_family$parameters_from_mean_par(mean, nuisance = gamma_var_mult)
       rgamma(n, shape = params[['shape']], scale = params[['scale']])
     })
 
@@ -28,15 +28,16 @@ test_that("Gamma Regression (identity link)", {
   res <- expect_no_error(
     survey_regression_mpde(y ~ x1 + x2 + x3,
                            design     = design,
-                           link       = link('identity', sd = 'log'),
+                           link       = link('identity', var_mult = 'log'),
                            divergence = 'ned',
                            family     = gamma_family,
                            optim_control = list(maxit = 5001)))
+
   expect_length(coef(res), 6)
   expect_length(sigma(res), 1)
   vcov_sandwich <- expect_no_error(vcov(res))
   expect_shape(vcov_sandwich, dim = c(6L, 6L))
-  expect_all_true(sqrt(diag(vcov_sandwich)) > 1e3)
+  expect_all_true(sqrt(diag(vcov_sandwich)) > 1e4)
   expect_no_error(vcov(res, which = 'nuisance')) |>
     expect_shape(dim = c(1L, 1L))
   expect_no_error(vcov(res, which = 'all')) |>
@@ -44,7 +45,7 @@ test_that("Gamma Regression (identity link)", {
 
   vcov_model <- expect_no_error(vcov(res, type = "model"))
   expect_shape(vcov_model, dim = c(6L, 6L))
-  expect_all_true(sqrt(diag(vcov_model)) > 1e3)
+  expect_all_true(sqrt(diag(vcov_model)) > 5e3)
   expect_no_error(vcov(res, which = 'nuisance', type = "model")) |>
     expect_shape(dim = c(1L, 1L))
   expect_no_error(vcov(res, which = 'all', type = "model")) |>
@@ -54,7 +55,7 @@ test_that("Gamma Regression (identity link)", {
 test_that("Gamma Regression (log link)", {
   N <- 1e6
   n <- 1e3
-  gamma_sd <- sqrt(2) * 35000
+  gamma_var_mult <- 0.5
 
   gamma_family <- model_family('gamma')
   set.seed(1)
@@ -67,7 +68,7 @@ test_that("Gamma Regression (log link)", {
     cor = 0.8,
     link_inv = exp,
     ranf = \(n, mean) {
-      params <- gamma_family$parameters_from_mean_par(mean, nuisance = gamma_sd)
+      params <- gamma_family$parameters_from_mean_par(mean, nuisance = gamma_var_mult)
       rgamma(n, shape = params[['shape']], scale = params[['scale']])
     })
 
@@ -77,7 +78,7 @@ test_that("Gamma Regression (log link)", {
   res <- expect_no_error(
     survey_regression_mpde(y ~ x1 + x2 + x3,
                            design     = design,
-                           link       = link('log', sd = 'log'),
+                           link       = link('log', var_mult = 'log'),
                            divergence = 'ned',
                            family     = gamma_family,
                            optim_method = 'BFGS',
@@ -86,7 +87,7 @@ test_that("Gamma Regression (log link)", {
   expect_length(sigma(res), 1)
   vcov_sandwich <- expect_no_error(vcov(res))
   expect_shape(vcov_sandwich, dim = c(6L, 6L))
-  expect_all_true(sqrt(diag(vcov_sandwich)) < 0.1)
+  expect_all_true(sqrt(diag(vcov_sandwich)) < 0.5)
   expect_no_error(vcov(res, which = 'nuisance')) |>
     expect_shape(dim = c(1L, 1L))
   expect_no_error(vcov(res, which = 'all')) |>
@@ -94,7 +95,7 @@ test_that("Gamma Regression (log link)", {
 
   vcov_model <- expect_no_error(vcov(res, type = "model"))
   expect_shape(vcov_model, dim = c(6L, 6L))
-  expect_all_true(sqrt(diag(vcov_model)) < 0.1)
+  expect_all_true(sqrt(diag(vcov_model)) < 0.5)
   expect_no_error(vcov(res, which = 'nuisance', type = "model")) |>
     expect_shape(dim = c(1L, 1L))
   expect_no_error(vcov(res, which = 'all', type = "model")) |>
