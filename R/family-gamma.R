@@ -47,20 +47,14 @@ Gamma <- ModelFamily$new(
     if (!isTRUE(mean > .Machine$double.eps) || !isTRUE(nuisance[[1]] > .Machine$double.eps)) {
       c(shape = NA_real_, scale = NA_real_)
     } else {
-      # sd <- mean * nuisance[[1]]
       c(shape = 1 / nuisance[[1]], scale = mean * nuisance[[1]])
-      # == c(shape = mean^2 / sd^2, scale = sd^2 / mean)
     }
   },
   mean_par = \ (params) {
-    mean <- prod(params)
-    var <- params[['shape']] * params[['scale']]^2
-    c(mean     = mean,
-      var_mult = var / mean^2)
+    c(mean     = prod(params),
+      var_mult = 1 / params[['shape']])# == var / mean^2
   },
   jacobian_mean_par_mapping = \ (mean, nuisance) {
-    # matrix(c(2 * mean / nuisance^2, -(nuisance/mean)^2,
-    #          -2 * mean^2 / nuisance^3, 2 * nuisance / mean), ncol = 2)
     matrix(c(0, nuisance[[1]]^2,
              -1 / nuisance[[1]]^2, 2 * mean * nuisance[[1]]), ncol = 2)
   },
