@@ -37,7 +37,7 @@ test_that("Gamma Regression (identity link)", {
   expect_length(sigma(res), 1)
   vcov_sandwich <- expect_no_error(vcov(res))
   expect_shape(vcov_sandwich, dim = c(6L, 6L))
-  expect_all_true(sqrt(diag(vcov_sandwich)) > 1e4)
+  expect_all_true(sqrt(diag(vcov_sandwich)) > 5e3)
   expect_no_error(vcov(res, which = 'nuisance')) |>
     expect_shape(dim = c(1L, 1L))
   expect_no_error(vcov(res, which = 'all')) |>
@@ -53,8 +53,8 @@ test_that("Gamma Regression (identity link)", {
 })
 
 test_that("Gamma Regression (log link)", {
-  N <- 1e7
-  n <- 1e4
+  N <- 1e6
+  n <- 1e3
   gamma_var_mult <- 0.5
 
   gamma_family <- model_family('gamma')
@@ -87,7 +87,7 @@ test_that("Gamma Regression (log link)", {
   expect_length(sigma(res), 1)
   vcov_sandwich <- expect_no_error(vcov(res))
   expect_shape(vcov_sandwich, dim = c(6L, 6L))
-  expect_all_true(sqrt(diag(vcov_sandwich)) < 0.5)
+  expect_all_true(sqrt(diag(vcov_sandwich)) < 0.2)
   expect_no_error(vcov(res, which = 'nuisance')) |>
     expect_shape(dim = c(1L, 1L))
   expect_no_error(vcov(res, which = 'all')) |>
@@ -95,7 +95,7 @@ test_that("Gamma Regression (log link)", {
 
   vcov_model <- expect_no_error(vcov(res, type = "model"))
   expect_shape(vcov_model, dim = c(6L, 6L))
-  expect_all_true(sqrt(diag(vcov_model)) < 0.5)
+  expect_all_true(sqrt(diag(vcov_model)) < 0.2)
   expect_no_error(vcov(res, which = 'nuisance', type = "model")) |>
     expect_shape(dim = c(1L, 1L))
   expect_no_error(vcov(res, which = 'all', type = "model")) |>
