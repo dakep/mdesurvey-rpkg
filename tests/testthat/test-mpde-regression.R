@@ -53,8 +53,8 @@ test_that("Gamma Regression (identity link)", {
 })
 
 test_that("Gamma Regression (log link)", {
-  N <- 1e6
-  n <- 1e3
+  N <- 1e7
+  n <- 1e4
   gamma_var_mult <- 0.5
 
   gamma_family <- model_family('gamma')

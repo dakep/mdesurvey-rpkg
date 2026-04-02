@@ -18,6 +18,7 @@ survey_regression_mpde(
   kernel = c("epanechnikov", "triangular", "rectangular", "biweight"),
   optim_method = "Nelder-Mead",
   optim_control = list(),
+  cov_truncation = Inf,
   mismatch_penalty = 10,
   singularity_penalty = mismatch_penalty
 )
@@ -49,15 +50,17 @@ phi divergence as returned by \code{\link[=phi_divergence]{phi_divergence()}}.}
 should be omitted.}
 
 \item{integration_subdivisions}{number of partitions to divide the domain of \eqn{\hat f()}
-for Gaussian quadrature.}
+for Gauss-Kronrod quadrature.}
 
-\item{bw}{bandwidth for the HT-adjusted KDE. Either a scalar bandwidth (not advised)
-used for all groups, or (the name of) a function which will be used to cmpute the
-bandwidth separately in each group. Uses \code{\link[stats:bandwidth]{stats::bw.nrd()}} as default.}
+\item{bw}{bandwidth for the HT-adjusted KDE. Uses \code{\link[stats:bandwidth]{stats::bw.nrd()}} as default.}
 
 \item{kernel}{Name of the kernel used in the HT-adjusted KDE.}
 
 \item{optim_method, optim_control}{method and control options passed on to \code{\link[stats:optim]{stats::optim()}}.}
+
+\item{cov_truncation}{Truncate the density ratio $\eqn{\hat f(x) / g_\theta(x)} within 1
+bandwidth of the finite domain boundaries when estimating the sandwich covariance.
+This has no effect if the domain of \code{family} is unbounded.}
 
 \item{mismatch_penalty, singularity_penalty}{penalties for mismatches between the scale
 of the model density and the KDE, and for singularities of the KDE w.r.t. the mode

@@ -25,31 +25,16 @@
 #'
 #' @param x a formula or matrix specifying the linear model.
 #'   The objects are first looked up in the provided `design`, then in the calling environment.
-#' @param design the survey design created by [survey::svydesign()] and friends.
 #' @param initial a list with two components:
 #'   `coef` with the initial estimates for the regression coefficients and
 #'   `nuisance` with the initial values for the nuisance components.
 #'   The family's `nuisance_name` has information about the nuisance parameters for the
 #'   respective model family.
 #'   The initial values must be on the scale of the link function!
-#' @param family either the name of a known model family, or a
-#'   model family as returned by [model_family()].
 #' @param link the link functions obtained with [link()] for the mean and nuisance components
 #'   of the linear regression model.
 #'   If missing, uses the default link for the family `family$default_link`.
-#' @param divergence either the name of a known phi divergence, or a
-#'   phi divergence as returned by [phi_divergence()].
-#' @param na.rm a logical evaluating to `TRUE` or `FALSE` indicating whether `NA` values
-#'   should be omitted.
-#' @param integration_subdivisions number of partitions to divide the domain of \eqn{\hat f()}
-#'   for Gaussian quadrature.
-#' @param bw bandwidth for the HT-adjusted KDE. Either a scalar bandwidth (not advised)
-#'   used for all groups, or (the name of) a function which will be used to cmpute the
-#'   bandwidth separately in each group. Uses [stats::bw.nrd()] as default.
-#' @param kernel Name of the kernel used in the HT-adjusted KDE.
-#' @param mismatch_penalty,singularity_penalty penalties for mismatches between the scale
-#'   of the model density and the KDE, and for singularities of the KDE w.r.t. the mode
-#'   density. See details.
+#' @inheritParams survey_mpde
 #'
 #' @param optim_method,optim_control method and control options passed on to [stats::optim()].
 #' @importFrom stats uniroot optim bw.nrd model.frame model.matrix model.response lm.fit
